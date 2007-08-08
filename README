@@ -1,0 +1,69 @@
+RT-Extension-LDAPImport
+
+INSTALLATION
+
+To install this module, run the following commands:
+
+    perl Makefile.PL
+    make
+    make test
+    make install
+
+This will install an rtldapimport script and the RT::Extension::LDAPImport
+module.
+
+There are several config variables which must be set in
+your RT_SiteConfig file
+
+Hostname or ldap(s):// uri
+ Set($LDAPHost,'our.ldap.host');
+
+Your LDAP username
+Leaving this unset will cause us to use an anonymous bind
+ Set($LDAPUser, 'user cn');
+
+Your LDAP Password
+ Set($LDAPPassword, 'ldap pass');
+
+Where to search
+ Set($LDAPBase, 'ou=People,o=Our Place');
+
+The search filter to apply (in this case, find all the bobs)
+ Set($LDAPFilter, '(&(cn = bob*))');
+
+A mapping of 
+Attribute in LDAP => Attribute in RT
+ Set($LDAPMapping, {uid  => 'Name',
+                    mail => 'EmailAddress',
+                    cn   => 'RealName',
+                    telephoneNumber => 'WorkPhone',
+                    departmentName => 'Organization'});
+
+RUNNING THE IMPORT
+
+If RT is not installed in /opt/rt3, you will need to change the 
+use lib '/opt/rt3/lib';
+line in rtldapimport to point to the directory where RT.pm can be found
+
+executing rtldapimport will run the import
+It is recommended that you make a database backup before doing so
+
+rtldapimport can be run with a --debug flag that will make it 
+print a lot of information to the screen.
+
+That debug information is also sent to the RT log with the debug level.
+Errors are logged to the screen and to the RT log 
+
+DEPENDENCIES
+
+  Class::Accessor
+  Net::LDAP
+  RT: 3.6.x
+
+
+COPYRIGHT AND LICENCE
+
+Copyright (C) 2007, Best Practical Solutions LLC.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.

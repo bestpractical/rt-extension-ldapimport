@@ -1,0 +1,22 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use lib '/opt/rt3/lib';
+use RT;
+RT::LoadConfig;
+RT::Init;
+
+use RT::Extension::LDAPImport;
+
+my $debug;
+use Getopt::Long;
+GetOptions ( "debug" => \$debug );
+
+my $importer = RT::Extension::LDAPImport->new;
+$importer->screendebug(1) if $debug;
+
+print "Starting import\n";
+$importer->import_users;
+print "Finished import\n";
