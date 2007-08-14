@@ -151,7 +151,7 @@ sub import_users {
             $self->_warn("No Name or Emailaddress for user, skipping ".Dumper $user);
             next;
         }
-        $self->_debug("Checking user $user->{Name}");
+        $self->_debug("Creating user $user->{Name}");
         #$self->_debug(Dumper $user);
         my $user_obj = $self->create_rt_user( user => $user );
         $self->add_user_to_group( user => $user_obj );
