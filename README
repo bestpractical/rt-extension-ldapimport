@@ -50,6 +50,10 @@ that returns either an arrayref or a list of attributes
 For more information on these see the import_users documentation
 in RT::Extension::LDAPImport
 
+All new users will belong to the 'Imported from LDAP' group
+You can change the name of this group using the $LDAPGroupName
+variable
+
 RUNNING THE IMPORT
 
 If RT is not installed in /opt/rt3, you will need to change the 

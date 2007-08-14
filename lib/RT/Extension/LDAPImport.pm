@@ -5,7 +5,7 @@ our $VERSION = '0.02';
 use warnings;
 use strict;
 use base qw(Class::Accessor);
-__PACKAGE__->mk_accessors(qw(_ldap screendebug));
+__PACKAGE__->mk_accessors(qw(_ldap _group screendebug));
 use Carp;
 use Net::LDAP;
 use Data::Dumper;
@@ -173,7 +173,8 @@ sub import_users {
         }
         $self->_debug("Checking user $newuser->{Name}");
         #$self->_debug(Dumper $newuser);
-        $self->create_rt_user( user => $newuser );
+        my $user_obj = $self->create_rt_user( user => $newuser );
+        $self->add_user_to_group(user => $user_obj);
     }
 
 }
@@ -248,8 +249,62 @@ sub create_rt_user {
     unless ($user_obj->Id) {
         $self->_error("We couldn't find or create $user->{Name}. This should never happen");
     }
-    return;
+    return $user_obj;
 
+}
+
+=head2 add_user_to_group
+
+Adds new users to the group specified in the $LDAPGroupName
+variable (defaults to 'Imported from LDAP')
+
+=cut
+
+sub add_user_to_group {
+    my $self = shift;
+    my %args = @_;
+    my $user = $args{user};
+
+    my $group = $self->_group||$self->setup_group;
+
+    my $principal = $user->PrincipalObj;
+
+    if ($group->HasMember($principal)) {
+        $self->_debug($user->Name . " already a member of " . $group->Name);
+        return;
+    }
+
+    my ($status, $msg) = $group->AddMember($principal->Id);
+    if ($status) {
+        $self->_debug("Added ".$user->Name." to ".$group->Name." [$msg]");
+    } else {
+        $self->_error("Couldn't add ".$user->Name." to ".$group->Name." [$msg]");
+    }
+
+    return $status;
+}
+
+=head2 setup_group
+
+Pulls the $LDAPGroupName object out of the DB or
+creates it if we ened to do so.
+
+=cut
+
+sub setup_group  {
+    my $self = shift;
+    my $group_name = $RT::LDAPGroupName||'Imported from LDAP';
+    my $group = RT::Group->new($RT::SystemUser);
+
+    $group->LoadUserDefinedGroup( $group_name );
+    unless ($group->Id) {
+        my ($id,$msg) = $group->CreateUserDefinedGroup( Name => $group_name );
+        unless ($id) {
+            $self->_error("Can't create group $group_name [$msg]")
+        }
+    }
+
+    $self->_group($group);
 }
 
 =head3 disconnect_ldap
@@ -269,6 +324,8 @@ sub disconnect_ldap {
     $ldap->disconnect;
     return;
 }
+
+=head1 Utility Functions
 
 =head3 screendebug
 
