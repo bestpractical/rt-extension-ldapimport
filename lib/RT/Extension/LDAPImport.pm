@@ -158,18 +158,33 @@ sub import_users {
     }
 }
 
+=head2 _check_ldap_mapping
+
+Returns true is there is an LDAPMapping configured,
+returns false, logs an error and disconnects from
+ldap if there is no mapping.
+
+=cut
+
 sub _check_ldap_mapping {
     my $self = shift;
 
     my @rtfields = keys %{$RT::LDAPMapping||{}};
     unless ( @rtfields ) {
-        $self->_debug("No mapping found in RT::LDAPMapping, can't import");
+        $self->_error("No mapping found in RT::LDAPMapping, can't import");
         $self->disconnect_ldap;
         return;
     }
 
     return 1;
 }
+
+=head2 _build_user 
+
+Builds up user data from LDAP for importing
+Returns a hash of user data ready for RT::User::Create
+
+=cut
 
 sub _build_user {
     my $self = shift;
