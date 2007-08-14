@@ -253,6 +253,10 @@ Will try loading the user and will only create a new
 user if it can't find an existing user with the Name
 or EmailAddress arg passed in.
 
+If the $LDAPUpdateUsers variable is true, data in RT
+will be clobbered with data in LDAP.  Otherwise we
+will skip to the next user.
+
 =cut
 
 sub create_rt_user {
@@ -268,9 +272,14 @@ sub create_rt_user {
     }
 
     if ($user_obj->Id) {
-        $self->_debug("User $user->{Name} already exists as ".$user_obj->Id." updating their data");
-        my @results = $user_obj->Update( ARGSRef => $user, AttributesRef => [keys %$user] );
-        $self->_debug(join(':',@results));
+        my $message = "User $user->{Name} already exists as ".$user_obj->Id;
+        if ($RT::LDAPUpdateUsers) {
+            $self->_debug("$message, updating their data");
+            my @results = $user_obj->Update( ARGSRef => $user, AttributesRef => [keys %$user] );
+            $self->_debug(join(':',@results||'no change'));
+        } else {
+            $self->_debug("$message, skipping");
+        }
     } else {
         my ($val, $msg) = $user_obj->Create( %$user, Privileged => 0 );
 

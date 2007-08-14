@@ -12,6 +12,8 @@ To install this module, run the following commands:
 This will install an rtldapimport script and the RT::Extension::LDAPImport
 module.
 
+CONFIGURATION
+
 There are several config variables which must be set in
 your RT_SiteConfig file
 
@@ -50,9 +52,17 @@ that returns either an arrayref or a list of attributes
 For more information on these see the import_users documentation
 in RT::Extension::LDAPImport
 
+The Group new users belong to (optional)
 All new users will belong to the 'Imported from LDAP' group
 You can change the name of this group using the $LDAPGroupName
 variable
+ Set($LDAPGroupName,'Imported Users');
+
+Should we update existing users (optional)
+By default, existing users are skipped.  If you
+turn on LDAPUpdateUsers, we will clobber existing
+data with data from LDAP.
+ Set($LDAPUpdateUsers,1);
 
 RUNNING THE IMPORT
 
