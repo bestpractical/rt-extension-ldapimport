@@ -1,6 +1,6 @@
 Revision history for RT-Extension-LDAPImport
 
-0.02  
+0.03  
        Added support for concatenation in LDAP fields
        Consequently, the mapping in your config has changed, it now
        goes RT Field => LDAP Field.  See the readme and the POD
@@ -10,6 +10,10 @@ Revision history for RT-Extension-LDAPImport
        on Import
 
        Added support for clobbering user data with LDAP data
+
+0.02  
+      fix missing executable bits
+
 0.01  Thu Jun  7 13:35:41 2007
        Initial release.
 
