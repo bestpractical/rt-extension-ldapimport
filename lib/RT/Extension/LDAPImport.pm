@@ -154,7 +154,7 @@ sub import_users {
         foreach my $rtfield ( @rtfields ) {
             my $ldap_attribute = $RT::LDAPMapping->{$rtfield};
 
-            my @attributes = $self->_parse_ldap_map($ldap_attribute);
+            my @attributes = $self->_parse_ldap_mapping($ldap_attribute);
             unless (@attributes) {
                 $self->_error("Invalid LDAP mapping for $rtfield ".Dumper($ldap_attribute));
                 next;
@@ -197,17 +197,18 @@ together.
 =cut
 
 sub _parse_ldap_mapping {
-    my ($self,$mapping) = @_;
+    my $self = shift;
+    my $mapping = shift;
 
     if (ref $mapping eq 'ARRAY') {
-        return map { $self->_parse_ldap_map($_) } @$mapping;
+        return map { $self->_parse_ldap_mapping($_) } @$mapping;
     } elsif (ref $mapping eq 'CODE') {
-        return map { $self->_parse_ldap_map($_) } $mapping->()
-    } elsif (ref $map) {
-        $self->_error("Invalid type of LDAPMapping [$map]");
+        return map { $self->_parse_ldap_mapping($_) } $mapping->()
+    } elsif (ref $mapping) {
+        $self->_error("Invalid type of LDAPMapping [$mapping]");
         return;
     } else {
-        return $map;
+        return $mapping;
     }
 }
 
