@@ -202,7 +202,9 @@ sub _build_user {
         my @values;
         foreach my $attribute (@attributes) {
             $self->_debug("fetching value for $attribute and storing it in $rtfield");
-            push @values, $args{ldap_entry}->get_value($attribute);
+            # otherwise we'll pull 7 alternate names out of the Name field
+            # this may want to be configurable
+            push @values, scalar $args{ldap_entry}->get_value($attribute);
         }
         $user->{$rtfield} = join(' ',@values); 
     }
