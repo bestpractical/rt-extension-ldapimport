@@ -142,6 +142,25 @@ sub import_users {
         return;
     }
 
+    return unless $self->_check_ldap_mapping;
+
+    while (my $entry = $results->shift_entry) {
+        my $user = $self->_build_user( ldap_entry => $entry );
+        $user->{Name} ||= $user->{EmailAddress};
+        unless ( $user->{Name} ) {
+            $self->_warn("No Name or Emailaddress for user, skipping ".Dumper $user);
+            next;
+        }
+        $self->_debug("Checking user $user->{Name}");
+        #$self->_debug(Dumper $user);
+        my $user_obj = $self->create_rt_user( user => $user );
+        $self->add_user_to_group( user => $user_obj );
+    }
+}
+
+sub _check_ldap_mapping {
+    my $self = shift;
+
     my @rtfields = keys %{$RT::LDAPMapping||{}};
     unless ( @rtfields ) {
         $self->_debug("No mapping found in RT::LDAPMapping, can't import");
@@ -149,34 +168,31 @@ sub import_users {
         return;
     }
 
-    while (my $entry = $results->shift_entry) {
-        my $newuser = {};
-        foreach my $rtfield ( @rtfields ) {
-            my $ldap_attribute = $RT::LDAPMapping->{$rtfield};
+    return 1;
+}
 
-            my @attributes = $self->_parse_ldap_mapping($ldap_attribute);
-            unless (@attributes) {
-                $self->_error("Invalid LDAP mapping for $rtfield ".Dumper($ldap_attribute));
-                next;
-            }
-            my @values;
-            foreach my $attribute (@attributes) {
-                $self->_debug("fetching value for $attribute and storing it in $rtfield");
-                push @values, $entry->get_value($attribute);
-            }
-            $newuser->{$rtfield} = join(' ',@values); 
-        }
-        $newuser->{Name} ||= $newuser->{EmailAddress};
-        unless ( $newuser->{Name} ) {
-            $self->_warn("No Name or Emailaddress for user, skipping ".Dumper $newuser);
+sub _build_user {
+    my $self = shift;
+    my %args = @_;
+
+    my $user = {};
+    foreach my $rtfield ( keys %{$RT::LDAPMapping} ) {
+        my $ldap_attribute = $RT::LDAPMapping->{$rtfield};
+
+        my @attributes = $self->_parse_ldap_mapping($ldap_attribute);
+        unless (@attributes) {
+            $self->_error("Invalid LDAP mapping for $rtfield ".Dumper($ldap_attribute));
             next;
         }
-        $self->_debug("Checking user $newuser->{Name}");
-        #$self->_debug(Dumper $newuser);
-        my $user_obj = $self->create_rt_user( user => $newuser );
-        $self->add_user_to_group(user => $user_obj);
+        my @values;
+        foreach my $attribute (@attributes) {
+            $self->_debug("fetching value for $attribute and storing it in $rtfield");
+            push @values, $args{ldap_entry}->get_value($attribute);
+        }
+        $user->{$rtfield} = join(' ',@values); 
     }
 
+    return $user;
 }
 
 =head3 _parse_ldap_map
