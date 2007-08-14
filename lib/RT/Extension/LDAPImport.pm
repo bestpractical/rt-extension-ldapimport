@@ -268,7 +268,9 @@ sub create_rt_user {
     }
 
     if ($user_obj->Id) {
-        $self->_debug("User $user->{Name} already exists as ".$user_obj->Id);
+        $self->_debug("User $user->{Name} already exists as ".$user_obj->Id." updating their data");
+        my @results = $user_obj->Update( ARGSRef => $user, AttributesRef => [keys %$user] );
+        $self->_debug(join(':',@results));
     } else {
         my ($val, $msg) = $user_obj->Create( %$user, Privileged => 0 );
 
