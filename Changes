@@ -8,6 +8,8 @@ Revision history for RT-Extension-LDAPImport
 
        Added support for adding all new users to a single group
        on Import
+
+       Added support for clobbering user data with LDAP data
 0.01  Thu Jun  7 13:35:41 2007
        Initial release.
 
