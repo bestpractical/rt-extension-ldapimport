@@ -110,6 +110,26 @@ and maps attributes from LDAP into RT::User attributes
 using $RT::LDAPMapping.
 Creates RT users if they don't already exist.
 
+RT::LDAPMapping should be set in your RT_SiteConfig
+file and looks like this.
+
+ Set($LDAPMapping, { RTUserField => LDAPField, RTUserField => LDAPField });
+
+RTUserField is the name of a field on an RT::User object
+LDAPField can be a simple scalar and that attribute
+will be looked up in LDAP.  
+
+It can also be an arrayref, in which case each of the 
+elements will be evaluated in turn.  Scalars will be
+looked up in LDAP and concatenated together with a single
+space.
+
+If the value is a sub reference, it will be executed.
+The sub should return a scalar, which will be examined.
+If it is a scalar, the value will be looked up in LDAP.
+If it is an arrayref, the values will be concatenated 
+together with a single space.
+
 =cut
 
 sub import_users {
@@ -122,8 +142,8 @@ sub import_users {
         return;
     }
 
-    my @attrs = keys %{$RT::LDAPMapping||{}};
-    unless ( @attrs ) {
+    my @rtfields = keys %{$RT::LDAPMapping||{}};
+    unless ( @rtfields ) {
         $self->_debug("No mapping found in RT::LDAPMapping, can't import");
         $self->disconnect_ldap;
         return;
@@ -131,9 +151,20 @@ sub import_users {
 
     while (my $entry = $results->shift_entry) {
         my $newuser = {};
-        foreach my $attribute (@attrs) {
-            my $rtfield= $RT::LDAPMapping->{$attribute};
-            $newuser->{$rtfield} = $entry->get_value($attribute);
+        foreach my $rtfield ( @rtfields ) {
+            my $ldap_attribute = $RT::LDAPMapping->{$rtfield};
+
+            my @attributes = $self->_parse_ldap_map($ldap_attribute);
+            unless (@attributes) {
+                $self->_error("Invalid LDAP mapping for $rtfield ".Dumper($ldap_attribute));
+                next;
+            }
+            my @values;
+            foreach my $attribute (@attributes) {
+                $self->_debug("fetching value for $attribute and storing it in $rtfield");
+                push @values, $entry->get_value($attribute);
+            }
+            $newuser->{$rtfield} = join(' ',@values); 
         }
         $newuser->{Name} ||= $newuser->{EmailAddress};
         unless ( $newuser->{Name} ) {
@@ -145,6 +176,39 @@ sub import_users {
         $self->create_rt_user( user => $newuser );
     }
 
+}
+
+=head3 _parse_ldap_map
+
+Internal helper function for import_user
+If we're passed an arrayref, it will recurse 
+over each of the elements in case one of them is
+another arrayref or subroutine.
+
+If we're passed a subref, it executes the code
+and recurses over each of the returned values
+so that a returned array or arrayref will work.
+
+If we're passed a scalar, returns that.
+
+Returns a list of values that need to be concatenated
+together.
+
+=cut
+
+sub _parse_ldap_mapping {
+    my ($self,$mapping) = @_;
+
+    if (ref $mapping eq 'ARRAY') {
+        return map { $self->_parse_ldap_map($_) } @$mapping;
+    } elsif (ref $mapping eq 'CODE') {
+        return map { $self->_parse_ldap_map($_) } $mapping->()
+    } elsif (ref $map) {
+        $self->_error("Invalid type of LDAPMapping [$map]");
+        return;
+    } else {
+        return $map;
+    }
 }
 
 =head2 create_rt_user

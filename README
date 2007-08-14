@@ -32,12 +32,23 @@ The search filter to apply (in this case, find all the bobs)
  Set($LDAPFilter, '(&(cn = bob*))');
 
 A mapping of 
-Attribute in LDAP => Attribute in RT
- Set($LDAPMapping, {uid  => 'Name',
-                    mail => 'EmailAddress',
-                    cn   => 'RealName',
-                    telephoneNumber => 'WorkPhone',
-                    departmentName => 'Organization'});
+Attribute in RT => Attribute in LDAP
+(this has changed since version 1, which was the other way around)
+ Set($LDAPMapping, {Name         => 'uid',
+                    EmailAddress => 'mail',
+                    RealName     => 'cn',
+                    WorkPhone    => 'telephoneNumber',
+                    Organization => 'departmentName'});
+
+The LDAP attributes can also be an arrayref of LDAP fields
+WorkPhone => [qw/CompanyPhone Extension/] 
+which will be concatenated together with a space
+
+The LDAP attribute can also be a subroutine reference
+that returns either an arrayref or a list of attributes
+
+For more information on these see the import_users documentation
+in RT::Extension::LDAPImport
 
 RUNNING THE IMPORT
 
