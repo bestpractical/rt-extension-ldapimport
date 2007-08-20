@@ -1,5 +1,8 @@
 Revision history for RT-Extension-LDAPImport
 
+0.04   
+       fix logging bug
+
 0.03  
        Added support for concatenation in LDAP fields
        Consequently, the mapping in your config has changed, it now
