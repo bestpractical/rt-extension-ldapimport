@@ -402,7 +402,7 @@ sub _warn {
     my $self = shift;
     my $msg  = shift;
 
-    $RT::Logger->warn($msg);
+    $RT::Logger->warning($msg);
     print STDERR $msg, "\n";
 }
 
