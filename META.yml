@@ -2,7 +2,7 @@
 abstract: Import RT Users from an LDAP store
 author: Kevin Falcone <falcone@bestpractical.com>
 distribution_type: module
-generated_by: Module::Install version 0.67
+generated_by: Module::Install version 0.670
 license: perl
 meta-spec: 
   url: http://module-build.sourceforge.net/META-spec-v1.3.html
