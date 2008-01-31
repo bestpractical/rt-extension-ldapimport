@@ -90,7 +90,7 @@ sub run_search {
 
     $self->_debug("searching with base => '$RT::LDAPBase' filter => '$RT::LDAPFilter'");
 
-    my $result = $ldap->search( base => $RT::LDAPBase, 
+    my $result = $ldap->search( base => $RT::LDAPBase,
                                 filter => $RT::LDAPFilter );
 
     if ($result->code) {
@@ -155,6 +155,7 @@ sub import_users {
         #$self->_debug(Dumper $user);
         my $user_obj = $self->create_rt_user( user => $user );
         $self->add_user_to_group( user => $user_obj );
+        $self->add_custom_field_value( user => $user_obj, ldap_entry => $entry );
     }
 }
 
@@ -192,6 +193,7 @@ sub _build_user {
 
     my $user = {};
     foreach my $rtfield ( keys %{$RT::LDAPMapping} ) {
+        next if $rtfield =~ /^CF\./i;
         my $ldap_attribute = $RT::LDAPMapping->{$rtfield};
 
         my @attributes = $self->_parse_ldap_mapping($ldap_attribute);
@@ -201,7 +203,7 @@ sub _build_user {
         }
         my @values;
         foreach my $attribute (@attributes) {
-            $self->_debug("fetching value for $attribute and storing it in $rtfield");
+            #$self->_debug("fetching value for $attribute and storing it in $rtfield");
             # otherwise we'll pull 7 alternate names out of the Name field
             # this may want to be configurable
             push @values, scalar $args{ldap_entry}->get_value($attribute);
@@ -351,6 +353,67 @@ sub setup_group  {
     $self->_group($group);
 }
 
+=head3 add_custom_field_value
+
+Adds values to a Select (one|many) Custom Field.
+The Custom Field should already exist, otherwise
+this will throw an error and not import any data.
+
+This could probably use some caching
+
+=cut
+
+sub add_custom_field_value {
+    my $self = shift;
+    my %args = @_;
+    my $user = $args{user};
+
+    foreach my $rtfield ( keys %{$RT::LDAPMapping} ) {
+        next unless $rtfield =~ /^CF\.(.+)$/i;
+        my $cf_name = $1;
+        my $ldap_attribute = $RT::LDAPMapping->{$rtfield};
+
+        my @attributes = $self->_parse_ldap_mapping($ldap_attribute);
+        unless (@attributes) {
+            $self->_error("Invalid LDAP mapping for $rtfield ".Dumper($ldap_attribute));
+            next;
+        }
+        my @values;
+        foreach my $attribute (@attributes) {
+            #$self->_debug("fetching value for $attribute and storing it in $rtfield");
+            # otherwise we'll pull 7 alternate names out of the Name field
+            # this may want to be configurable
+            push @values, scalar $args{ldap_entry}->get_value($attribute);
+        }
+        my $cfv_name = join(' ',@values); 
+        next unless $cfv_name;
+
+        my $cf = RT::CustomField->new($RT::SystemUser);
+        my ($status, $msg) = $cf->Load($cf_name);
+        unless ($status) {
+            $self->_error("Couldn't load CF [$cf_name]: $msg");
+            next;
+        }
+
+        my $cfv = RT::CustomFieldValue->new($RT::SystemUser);
+        $cfv->LoadByCols( CustomField => $cf->id, 
+                          Name => $cfv_name );
+        if ($cfv->id) {
+            $self->_debug("Custom Field '$cf_name' already has '$cfv_name' for a value");
+            next;
+        }
+
+        ($status, $msg) = $cf->AddValue( Name => $cfv_name );
+        if ($status) {
+            $self->_debug("Added '$cfv_name' to Custom Field '$cf_name' [$msg]");
+        } else {
+            $self->_error("Couldn't add '$cfv_name' to '$cf_name' [$msg]");
+        }
+    }
+
+    return;
+
+}
 =head3 disconnect_ldap
 
 Disconnects from the LDAP server
