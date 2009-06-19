@@ -11,4 +11,13 @@ requires('Net::LDAP');
 requires('RT' => '3.6.3');
 requires('Class::Accessor');
 
+my ($lp) = ($INC{'RT.pm'} =~ /^(.*)[\\\/]/);
+my $lib_path = join( ' ', "$RT::LocalPath/lib", $lp );
+substitute(
+    {
+        RT_LIB_PATH  => $lib_path,
+    },
+    qw(bin/rtldapimport),
+);
+
 &WriteAll;
