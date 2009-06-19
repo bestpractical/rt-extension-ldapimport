@@ -1,5 +1,11 @@
 Revision history for RT-Extension-LDAPImport
 
+0.06
+       3.8 compatibility fixes 
+
+0.05 
+       Handle importing Custom Fields
+
 0.04   
        fix logging bug
 
