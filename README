@@ -2,12 +2,18 @@ RT-Extension-LDAPImport
 
 INSTALLATION
 
-To install this module, run the following commands:
+How to install:
 
-    perl Makefile.PL
-    make
-    make test
-    make install
+1. perl Makefile.PL
+2. make
+3. make install (may need root permissions)
+4. Edit your /opt/rt3/etc/RT_SiteConfig.pm 
+    Set(@Plugins, qw(RT::Extension::LDAPImport));
+    or add RT::Extension::LDAPImport to your existing @Plugins line
+5. Clear your mason cache
+     rm -rf /opt/rt3/var/mason_data/obj
+6. Restart your webserver
+
 
 This will install an rtldapimport script and the RT::Extension::LDAPImport
 module.
@@ -88,7 +94,7 @@ DEPENDENCIES
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2007, Best Practical Solutions LLC.
+Copyright (C) 2007-2009, Best Practical Solutions LLC.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
