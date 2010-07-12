@@ -11,9 +11,16 @@ RT::Init;
 
 use RT::Extension::LDAPImport;
 
-my $debug;
+my ($debug, $help);
 use Getopt::Long;
-GetOptions ( "debug" => \$debug );
+GetOptions ( "debug" => \$debug, "help" => \$help );
+if ($help) {
+   print "$0: [--debug] [--help]\n";
+   print "   --help           This usage statement.\n";
+   print "   --debug          Enable debugging.\n";
+   exit 0;
+}
+
 
 my $importer = RT::Extension::LDAPImport->new;
 $importer->screendebug(1) if $debug;
