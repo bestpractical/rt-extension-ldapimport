@@ -3,28 +3,40 @@
 use strict;
 use warnings;
 
+BEGIN {
 ### after:     use lib qw(@RT_LIB_PATH@);
 use lib '/opt/rt3/local/lib /opt/rt3/lib';
 use RT;
 RT::LoadConfig;
 RT::Init;
+}
 
 use RT::Extension::LDAPImport;
 
-my ($debug, $help);
+my ($debug,$import,$help);
 use Getopt::Long;
-GetOptions ( "debug" => \$debug, "help" => \$help );
+GetOptions ( "debug" => \$debug, "help" => \$help, "import" => \$import );
 if ($help) {
-   print "$0: [--debug] [--help]\n";
+   print "$0: [--debug] [--import] [--help]\n";
    print "   --help           This usage statement.\n";
    print "   --debug          Enable debugging.\n";
+   print "   --import         Do the import.\n";
    exit 0;
 }
-
 
 my $importer = RT::Extension::LDAPImport->new;
 $importer->screendebug(1) if $debug;
 
-print "Starting import\n";
-$importer->import_users;
-print "Finished import\n";
+if ($import) {
+    print "Starting import\n";
+    $importer->import_users(import => 1);
+    print "Finished import\n";
+} else {
+    print <<TESTING;
+Running test import, no data will be changed
+Rerun command with --import to perform the import
+Rerun command with --debug for more information
+TESTING
+    $importer->import_users;
+    print "Finished test\n";
+}

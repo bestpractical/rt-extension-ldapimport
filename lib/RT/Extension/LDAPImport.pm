@@ -103,12 +103,15 @@ sub run_search {
 
 }
 
-=head2 import_users
+=head2 import_users import => 1|0
 
 Takes the results of the search from run_search
 and maps attributes from LDAP into RT::User attributes
 using $RT::LDAPMapping.
 Creates RT users if they don't already exist.
+
+With no arguments, only prints debugging information.
+Pass import => 1 to actually change data.
 
 RT::LDAPMapping should be set in your RT_SiteConfig
 file and looks like this.
@@ -134,6 +137,7 @@ together with a single space.
 
 sub import_users {
     my $self = shift;
+    my %args = @_;
 
     my $results = $self->run_search;
     unless ( $results && $results->count ) {
@@ -151,11 +155,15 @@ sub import_users {
             $self->_warn("No Name or Emailaddress for user, skipping ".Dumper $user);
             next;
         }
-        $self->_debug("Creating user $user->{Name}");
-        #$self->_debug(Dumper $user);
-        my $user_obj = $self->create_rt_user( user => $user );
-        $self->add_user_to_group( user => $user_obj );
-        $self->add_custom_field_value( user => $user_obj, ldap_entry => $entry );
+        if ($args{import}) {
+            $self->_debug("Processing user $user->{Name}");
+            my $user_obj = $self->create_rt_user( user => $user );
+            $self->add_user_to_group( user => $user_obj );
+            $self->add_custom_field_value( user => $user_obj, ldap_entry => $entry );
+        } else {
+            print "Found user $user->{Name}\n";
+            $self->_debug(Dumper($user));
+        }
     }
 }
 
