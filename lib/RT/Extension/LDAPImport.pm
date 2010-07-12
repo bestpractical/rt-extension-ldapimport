@@ -216,7 +216,7 @@ sub _build_user {
             # this may want to be configurable
             push @values, scalar $args{ldap_entry}->get_value($attribute);
         }
-        $user->{$rtfield} = join(' ',@values); 
+        $user->{$rtfield} = join(' ',grep {defined} @values);
     }
 
     return $user;
