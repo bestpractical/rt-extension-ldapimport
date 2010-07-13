@@ -17,10 +17,12 @@ my ($debug,$import,$help);
 use Getopt::Long;
 GetOptions ( "debug" => \$debug, "help" => \$help, "import" => \$import );
 if ($help) {
-   print "$0: [--debug] [--import] [--help]\n";
-   print "   --help           This usage statement.\n";
-   print "   --debug          Enable debugging.\n";
-   print "   --import         Do the import.\n";
+   print <<USAGE;
+$0: [--debug] [--import] [--help]\n";
+     --help           This usage statement.\n";
+     --debug          Enable debugging.\n";
+     --import         Do the import.\n";
+USAGE
    exit 0;
 }
 
