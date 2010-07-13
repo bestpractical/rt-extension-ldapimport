@@ -17,6 +17,9 @@ substitute(
     {
         RT_LIB_PATH  => $lib_path,
     },
+    {
+        sufix => '.in'
+    },
     qw(bin/rtldapimport),
 );
 

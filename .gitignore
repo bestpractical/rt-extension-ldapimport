@@ -12,3 +12,5 @@ pod2htm*.tmp
 RT-Extension-LDAPImport-*
 META.yml
 *.swp
+rtldapimport
+*.bak

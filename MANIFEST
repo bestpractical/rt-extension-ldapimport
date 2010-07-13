@@ -1,4 +1,3 @@
-bin/rtldapimport
 Changes
 inc/Module/Install.pm
 inc/Module/Install/Base.pm
@@ -10,9 +9,11 @@ inc/Module/Install/RTx.pm
 inc/Module/Install/Substitute.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
+INSTALL.SKIP
 lib/RT/Extension/LDAPImport.pm
 Makefile.PL
 MANIFEST
+MANIFEST.SKIP
 META.yml			# Will be created by "make dist"
 README
 t/00.load.t
