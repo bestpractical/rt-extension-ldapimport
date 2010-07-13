@@ -274,12 +274,7 @@ sub create_rt_user {
     my %args = @_;
     my $user = $args{user};
 
-    my $user_obj = RT::User->new($RT::SystemUser);
-
-    $user_obj->Load( $user->{Name} );
-    unless ($user_obj->Id) {
-        $user_obj->LoadByEmail( $user->{EmailAddress} );
-    }
+    my $user_obj = $self->_load_rt_user(%args);
 
     if ($user_obj->Id) {
         my $message = "User $user->{Name} already exists as ".$user_obj->Id;
@@ -305,6 +300,21 @@ sub create_rt_user {
     }
     return $user_obj;
 
+}
+
+sub _load_rt_user {
+    my $self = shift;
+    my %args = @_;
+    my $user = $args{user};
+
+    my $user_obj = RT::User->new($RT::SystemUser);
+
+    $user_obj->Load( $user->{Name} );
+    unless ($user_obj->Id) {
+        $user_obj->LoadByEmail( $user->{EmailAddress} );
+    }
+
+    return $user_obj;
 }
 
 =head2 add_user_to_group
