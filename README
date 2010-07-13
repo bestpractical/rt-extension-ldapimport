@@ -73,6 +73,13 @@ turn on LDAPUpdateUsers, we will clobber existing
 data with data from LDAP.
  Set($LDAPUpdateUsers,1);
 
+Should we import new users or just update existing ones?
+By default, we create users who don't exist in RT but do
+match your LDAP filter and obey $LDAPUpdateUsers for existing
+users.  This setting overrides $LDAPUpdateUsers but skips users
+who can't be found in RT.
+ Set($LDAPUpdateOnly,1);
+
 RUNNING THE IMPORT
 
 If RT is not installed in /opt/rt3, you will need to change the 

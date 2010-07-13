@@ -177,6 +177,7 @@ sub _import_user {
 
     $self->_debug("Processing user $user->{Name}");
     my $user_obj = $self->create_rt_user( user => $user );
+    return unless $user_obj;
     $self->add_user_to_group( user => $user_obj );
     $self->add_custom_field_value( user => $user_obj, ldap_entry => $ldap_entry );
     return;
@@ -194,8 +195,46 @@ sub _show_user {
     my %args = @_;
     my $user = $args{user};
 
-    print "Found user $user->{Name}\n";
-    $self->_debug(Dumper($user));
+    my $rt_user = $self->_load_rt_user(%args);
+
+    if ( $rt_user->Id ) {
+        if ( $RT::LDAPUpdateUsers || $RT::LDAPUpdateOnly ) {
+            print "Found existing user $user->{Name} to update\n";
+            $self->_show_user_info( %args, rt_user => $rt_user );
+        } else {
+            print "Found existing user $user->{Name} skipping\n";
+        }
+    } else {
+        if ( $RT::LDAPUpdateOnly ) {
+            print "$user->{Name} doesn't exist in RT, skipping\n";
+        } else {
+            print "Found new user $user->{Name} to create in RT\n";
+            $self->_show_user_info( %args );
+        }
+    }
+}
+
+sub _show_user_info {
+    my $self = shift;
+    my %args = @_;
+    my $user = $args{user};
+    my $rt_user = $args{rt_user};
+
+    return unless $self->screendebug;
+
+    print "\tRT Field\tRT Value -> LDAP Value\n";
+    foreach my $key (sort keys %$user) {
+        my $old_value;
+        if ($rt_user) {
+            eval { $old_value = $rt_user->$key() };
+            if ($user->{$key} && $old_value eq $user->{$key}) {
+                $old_value = 'unchanged';
+            }
+        }
+        $old_value ||= 'unset';
+        print "\t$key\t$old_value => $user->{$key}\n";
+    }
+    #$self->_debug(Dumper($user));
 }
 
 =head2 _check_ldap_mapping
@@ -298,6 +337,9 @@ If the $LDAPUpdateUsers variable is true, data in RT
 will be clobbered with data in LDAP.  Otherwise we
 will skip to the next user.
 
+If $LDAPUpdateOnly is true, we will not create new users
+but we will update existing ones.
+
 =cut
 
 sub create_rt_user {
@@ -309,21 +351,28 @@ sub create_rt_user {
 
     if ($user_obj->Id) {
         my $message = "User $user->{Name} already exists as ".$user_obj->Id;
-        if ($RT::LDAPUpdateUsers) {
+        if ($RT::LDAPUpdateUsers || $RT::LDAPUpdateOnly) {
             $self->_debug("$message, updating their data");
             my @results = $user_obj->Update( ARGSRef => $user, AttributesRef => [keys %$user] );
-            $self->_debug(join(':',@results||'no change'));
+            $self->_debug(join("\n",@results)||'no change');
         } else {
             $self->_debug("$message, skipping");
         }
-    } else {
-        my ($val, $msg) = $user_obj->Create( %$user, Privileged => 0 );
+    }
 
-        unless ($val) {
-            $self->_error("couldn't create user_obj for $user->{Name}: $msg");
+    if ( !$user_obj->Id ) {
+        if ( $RT::LDAPUpdateOnly ) {
+            $self->_debug("User $user->{Name} doesn't exist in RT, skipping");
             return;
+        } else {
+            my ($val, $msg) = $user_obj->Create( %$user, Privileged => 0 );
+
+            unless ($val) {
+                $self->_error("couldn't create user_obj for $user->{Name}: $msg");
+                return;
+            }
+            $self->_debug("Created user for $user->{Name} with id ".$user_obj->Id);
         }
-        $self->_debug("Created user for $user->{Name} with id ".$user_obj->Id);
     }
 
     unless ($user_obj->Id) {
