@@ -156,15 +156,46 @@ sub import_users {
             next;
         }
         if ($args{import}) {
-            $self->_debug("Processing user $user->{Name}");
-            my $user_obj = $self->create_rt_user( user => $user );
-            $self->add_user_to_group( user => $user_obj );
-            $self->add_custom_field_value( user => $user_obj, ldap_entry => $entry );
+            $self->_import_user( user => $user, ldap_entry => $entry );
         } else {
-            print "Found user $user->{Name}\n";
-            $self->_debug(Dumper($user));
+            $self->_show_user( user => $user );
         }
     }
+}
+
+=head2 _import_user
+
+The user has run us with --import, so bring data in
+
+=cut
+
+sub _import_user {
+    my $self = shift;
+    my %args = @_;
+    my $user = $args{user};
+    my $ldap_entry = $args{ldap_entry};
+
+    $self->_debug("Processing user $user->{Name}");
+    my $user_obj = $self->create_rt_user( user => $user );
+    $self->add_user_to_group( user => $user_obj );
+    $self->add_custom_field_value( user => $user_obj, ldap_entry => $ldap_entry );
+    return;
+}
+
+=head2 _show_user
+
+Show debugging information about the user record we're going to import
+when the users reruns us with --import
+
+=cut
+
+sub _show_user {
+    my $self = shift;
+    my %args = @_;
+    my $user = $args{user};
+
+    print "Found user $user->{Name}\n";
+    $self->_debug(Dumper($user));
 }
 
 =head2 _check_ldap_mapping
