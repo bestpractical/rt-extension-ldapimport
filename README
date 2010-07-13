@@ -76,8 +76,13 @@ If RT is not installed in /opt/rt3, you will need to change the
 use lib '/opt/rt3/lib';
 line in rtldapimport to point to the directory where RT.pm can be found
 
-executing rtldapimport will run the import
-It is recommended that you make a database backup before doing so
+executing rtldapimport will run a test that connects to your LDAP server
+and prints out a list of the users found.  To see more about these users,
+include the --debug flag.
+
+executing rtldapimport with the --import flag will cause it to import
+users into your RT database.  It is recommended that you make a database
+backup before doing this.
 
 rtldapimport can be run with a --debug flag that will make it 
 print a lot of information to the screen.
