@@ -529,6 +529,70 @@ sub add_custom_field_value {
 
 }
 
+=head2 import_groups import => 1|0
+
+Takes the results of the search from run_group_search
+and maps attributes from LDAP into RT::Group attributes
+using $RT::LDAPGroupMapping.
+
+Creates groups if they don't exist
+
+Removes users from groups if they have been removed from the group on LDAP
+
+With no arguments, only prints debugging information.
+Pass import => 1 to actually change data.
+
+=cut
+
+sub import_groups {
+    my $self = shift;
+    my %args = @_;
+
+    my $results = $self->run_group_search;
+    unless ( $results && $results->count ) {
+        $self->_debug("No results found, no group import");
+        $self->disconnect_ldap;
+        return;
+    }
+
+    return unless $self->_check_ldap_mapping;
+
+    while (my $entry = $results->shift_entry) {
+        my $user = $self->_build_user( ldap_entry => $entry );
+        $user->{Name} ||= $user->{EmailAddress};
+        unless ( $user->{Name} ) {
+            $self->_warn("No Name or Emailaddress for user, skipping ".Dumper $user);
+            next;
+        }
+        if ($args{import}) {
+            $self->_import_user( user => $user, ldap_entry => $entry );
+        } else {
+            $self->_show_user( user => $user );
+        }
+    }
+}
+
+=head3 run_group_search
+
+Set up the approviate arguments for a listing of users
+
+=cut
+
+sub run_group_search {
+    my $self = shift;
+
+    unless ($RT::LDAPGroupBase && $RT::LDAPGroupFilter) {
+        $self->_warn("Not running a group import, configuration not set");
+        return;
+    }
+    $self->_run_search(
+        base   => $RT::LDAPGroupBase,
+        filter => $RT::LDAPGroupFilter
+    );
+
+}
+
+
 =head3 disconnect_ldap
 
 Disconnects from the LDAP server
