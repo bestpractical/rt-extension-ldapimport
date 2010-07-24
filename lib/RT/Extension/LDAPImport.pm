@@ -67,31 +67,43 @@ sub connect_ldap {
 
 }
 
-=head2 run_search
+=head2 run_user_search
 
-Executes a search using the RT::LDAPFilter and RT::LDAPBase
-options.
+Set up the appropriate arguments for a listing of users
 
-LDAPBase is the DN to look under
-LDAPFilter is how you want to restrict the users coming back
+=cut
+
+sub run_user_search {
+    my $self = shift;
+    $self->_run_search(
+        base   => $RT::LDAPBase,
+        filter => $RT::LDAPFilter
+    );
+
+}
+
+=head2 _run_search
+
+Executes a search using the provided base and filter
 
 Will connect to LDAP server using connect_ldap
 
 =cut
 
-sub run_search {
+sub _run_search {
     my $self = shift;
     my $ldap = $self->_ldap||$self->connect_ldap;
+    my %args = @_;
 
     unless ($ldap) {
         $self->_error("fetching an LDAP connection failed");
         return;
     }
 
-    $self->_debug("searching with base => '$RT::LDAPBase' filter => '$RT::LDAPFilter'");
+    $self->_debug("searching with base => '$args{base}' filter => '$args{filter}'");
 
-    my $result = $ldap->search( base => $RT::LDAPBase,
-                                filter => $RT::LDAPFilter );
+    my $result = $ldap->search( base => $args{base},
+                                filter => $args{filter} );
 
     if ($result->code) {
         $self->_error("LDAP search failed " . $result->error);
@@ -139,7 +151,7 @@ sub import_users {
     my $self = shift;
     my %args = @_;
 
-    my $results = $self->run_search;
+    my $results = $self->run_user_search;
     unless ( $results && $results->count ) {
         $self->_debug("No results found, no import");
         $self->disconnect_ldap;
