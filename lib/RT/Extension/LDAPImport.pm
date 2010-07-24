@@ -527,6 +527,7 @@ sub add_custom_field_value {
     return;
 
 }
+
 =head3 disconnect_ldap
 
 Disconnects from the LDAP server
