@@ -11,6 +11,11 @@ requires('Net::LDAP');
 requires('RT' => '3.6.3');
 requires('Class::Accessor');
 
+feature "Proper Testing" =>
+    -default => 0,
+    recommends('Net::LDAP::Server::Test')
+    ;
+
 my ($lp) = ($INC{'RT.pm'} =~ /^(.*)[\\\/]/);
 my $lib_path = join( ' ', "$RT::LocalPath/lib", $lp );
 substitute(
@@ -23,4 +28,5 @@ substitute(
     qw(bin/rtldapimport),
 );
 
+&auto_install();
 &WriteAll;
