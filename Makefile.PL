@@ -27,6 +27,15 @@ substitute(
     },
     qw(bin/rtldapimport),
 );
+substitute(
+    {
+        RT_LIB_PATH  => $lib_path,
+    },
+    {
+        sufix => '.in'
+    },
+    q(t/lib/RT/Extension/LDAPImport/Test.pm),
+);
 
 &auto_install();
 &WriteAll;
