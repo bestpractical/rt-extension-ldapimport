@@ -18,9 +18,10 @@ my @ldap_entries;
 for ( 1 .. 13 ) {
     my $entry = Net::LDAP::Entry->new();
     my $username = "testuser$_";
-    $entry->dn("uid=$username,ou=foo,dc=bestpractical,dc=com");
+    my $dn = "uid=$username,ou=foo,dc=bestpractical,dc=com";
+    $entry->dn($dn);
     $entry->add(
-        dn   => "uid=$username,ou=foo,dc=bestpractical,dc=com",
+        dn   => $dn,
         cn   => "Test User $_ ".int rand(200),
         mail => "$username\@invalid.tld",
         uid  => $username,
