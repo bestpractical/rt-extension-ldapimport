@@ -173,6 +173,7 @@ sub import_users {
             $self->_show_user( user => $user );
         }
     }
+    return 1;
 }
 
 =head2 _import_user
