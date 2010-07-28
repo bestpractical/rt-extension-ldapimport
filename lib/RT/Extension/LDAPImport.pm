@@ -615,7 +615,6 @@ sub _import_group {
     my $group_obj = $self->create_rt_group( group => $group );
     return unless $group_obj;
     $self->add_group_members( group => $group_obj, ldap_entry => $ldap_entry );
-    #$self->add_custom_field_value( group => $group_obj, ldap_entry => $ldap_entry );
     return;
 }
 
@@ -671,6 +670,38 @@ sub add_group_members {
     my %args = @_;
     my $group = $args{group};
     my $ldap_entry = $args{ldap_entry};
+
+    my $mapping = $RT::LDAPGroupMapping;
+
+    my $members = $ldap_entry->get_value($mapping->{Member_Attr}, asref => 1);
+
+    unless (defined $members) {
+        $self->_warn("No members found for $group->{Name} in Member_Attr");
+        return;
+    }
+
+    foreach my $member (@$members) {
+        my $ldap_users = $self->_run_search(
+            base   => $RT::LDAPBase,
+            filter => "(dn=$member)"
+        );
+        unless ( $ldap_users && $ldap_users->count ) {
+            $self->_warn("No user found for $member who should be a member of  ");
+        }
+        my $ldap_user = $ldap_users->shift_entry;
+        my $username = $ldap_user->get_value($RT::LDAPMapping->{Name});
+        my $rt_user = RT::User->new($RT::SystemUser);
+        my ($res,$msg) = $rt_user->Load( $username );
+        unless ($res) {
+            $self->_warn("Unable to load $username: $msg");
+            next;
+        }
+        ($res,$msg) = $group->AddMember($rt_user->PrincipalObj->Id);
+        unless ($res) {
+            $self->_warn("Failed to add $username to $group->{Name}: $msg");
+        }
+
+    }
 
 }
 

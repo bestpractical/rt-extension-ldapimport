@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use lib 't/lib';
-use RT::Extension::LDAPImport::Test tests => 25;
+use RT::Extension::LDAPImport::Test tests => 41;
 eval { require Net::LDAP::Server::Test; 1; } or do {
     plan skip_all => 'Unable to test without Net::Server::LDAP::Test';
 };
@@ -39,7 +39,7 @@ for ( 1 .. 4 ) {
     my $dn = "cn=$groupname,ou=groups,dc=bestpractical,dc=com";
     my $entry = {
         cn   =>  $groupname,
-        member => [ map { $_->{dn} } @ldap_user_entries[($_-1),($_+3),($_+7)] ],
+        members => [ map { $_->{dn} } @ldap_user_entries[($_-1),($_+3),($_+7)] ],
         objectClass => 'Group',
     };
     $ldap->add( $dn, attr => [%$entry] );
@@ -70,7 +70,7 @@ RT->Config->Set('LDAPGroupBase','dc=bestpractical,dc=com');
 RT->Config->Set('LDAPGroupFilter','(objectClass=Group)');
 RT->Config->Set('LDAPGroupMapping',
                    {Name         => 'cn',
-                    Member_Attr  => 'mail',
+                    Member_Attr  => 'members',
                    });
 
 # confirm that we skip the import
@@ -86,4 +86,25 @@ for my $entry (@ldap_group_entries) {
     my $group = RT::Group->new($RT::SystemUser);
     $group->LoadUserDefinedGroup( $entry->{cn} );
     ok($group->Id, "Found $entry->{cn} as ".$group->Id);
+
+    my $idlist;
+    my $members = $group->MembersObj;
+    while (my $group_member = $members->Next) {
+        my $member = $group_member->MemberObj;
+        next unless $member->IsUser();
+        $idlist->{$member->Object->Id}++;
+    }
+
+    foreach my $dn ( @{$entry->{members}} ) {
+        my ($user) = grep { $_->{dn} eq $dn } @ldap_user_entries;
+        my $rt_user = RT::User->new($RT::SystemUser);
+        my ($res,$msg) = $rt_user->Load($user->{uid});
+        unless ($res) {
+            diag("Couldn't load user $user->{uid}: $msg");
+            next;
+        }
+        ok($group->HasMember($rt_user->PrincipalObj->Id),"Correctly assigned $user->{uid} to $entry->{cn}");
+        delete $idlist->{$rt_user->Id};
+    }
+    is(keys %$idlist,0,"No dangling users");
 }
