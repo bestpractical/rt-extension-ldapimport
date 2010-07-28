@@ -14,24 +14,26 @@ my ($url, $m) = RT::Test->started_ok;
 my $importer = RT::Extension::LDAPImport->new;
 isa_ok($importer,'RT::Extension::LDAPImport');
 
+my $ldap_port = 1024 + int rand(10000) + $$ % 1024;
+ok( my $server = Net::LDAP::Server::Test->new( $ldap_port, auto_schema => 1 ), 
+    "spawned test LDAP server on port $ldap_port");
+
+my $ldap = Net::LDAP->new("localhost:$ldap_port");
+$ldap->bind();
 my @ldap_entries;
 for ( 1 .. 13 ) {
-    my $entry = Net::LDAP::Entry->new();
     my $username = "testuser$_";
     my $dn = "uid=$username,ou=foo,dc=bestpractical,dc=com";
-    $entry->dn($dn);
-    $entry->add(
-        dn   => $dn,
-        cn   => "Test User $_ ".int rand(200),
-        mail => "$username\@invalid.tld",
-        uid  => $username,
-    );
+    my $entry = { 
+                    cn   => "Test User $_ ".int rand(200),
+                    mail => "$username\@invalid.tld",
+                    uid  => $username,
+                    objectClass => 'User',
+                };
     push @ldap_entries, $entry;
+    $ldap->add( $dn, attr => [%$entry] );
 }
 
-my $ldap_port = 1024 + int rand(10000) + $$ % 1024;
-ok( my $server = Net::LDAP::Server::Test->new( $ldap_port, data => \@ldap_entries ),
-    "spawned test LDAP server on port $ldap_port");
 
 RT->Config->Set('LDAPHost',"ldap://localhost:$ldap_port");
 RT->Config->Set('LDAPMapping',
@@ -50,7 +52,6 @@ ok($importer->import_users());
     for my $username (qw/RT_SYSTEM root Nobody/) {
         $users->Limit( FIELD => 'Name', OPERATOR => '!=', VALUE => $username, ENTRYAGGREGATOR => 'AND' );
     }
-    diag($users->BuildSelectQuery);
     is($users->Count,0);
 }
 
@@ -58,8 +59,11 @@ ok($importer->import_users());
 ok($importer->import_users( import => 1 ));
 for my $entry (@ldap_entries) {
     my $user = RT::User->new($RT::SystemUser);
-    $user->LoadByCols( EmailAddress => $entry->get_value('mail'),
-                       Realname => $entry->get_value('cn'),
-                       Name => $entry->get_value('uid') );
-    ok($user->Id, "Found ".$entry->get_value('cn')." as ".$user->Id);
+    $user->LoadByCols( EmailAddress => $entry->{mail},
+                       Realname => $entry->{cn},
+                       Name => $entry->{uid} );
+    ok($user->Id, "Found $entry->{cn} as ".$user->Id);
 }
+
+# can't unbind earlier or the server will die
+$ldap->unbind;
