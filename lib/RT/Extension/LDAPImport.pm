@@ -286,7 +286,7 @@ sub _build_object {
     my %args = @_;
     my $mapping = $args{mapping};
 
-    my $user = {};
+    my $object = {};
     foreach my $rtfield ( keys %{$mapping} ) {
         next if $rtfield =~ $args{skip};
         my $ldap_attribute = $mapping->{$rtfield};
@@ -303,10 +303,10 @@ sub _build_object {
             # this may want to be configurable
             push @values, scalar $args{ldap_entry}->get_value($attribute);
         }
-        $user->{$rtfield} = join(' ',grep {defined} @values);
+        $object->{$rtfield} = join(' ',grep {defined} @values);
     }
 
-    return $user;
+    return $object;
 }
 
 =head3 _parse_ldap_map
