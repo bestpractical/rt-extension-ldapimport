@@ -620,14 +620,10 @@ sub _import_group {
 
 =head2 create_rt_group
 
-Takes a hashref of args to pass to RT::User::Create
+Takes a hashref of args to pass to RT::Group::Create
 Will try loading the group and will only create a new
 group if it can't find an existing group with the Name
 or EmailAddress arg passed in.
-
-If the $LDAPUpdateUsers variable is true, data in RT
-will be clobbered with data in LDAP.  Otherwise we
-will skip to the next group.
 
 If $LDAPUpdateOnly is true, we will not create new groups
 but we will update existing ones.
@@ -643,12 +639,21 @@ sub create_rt_group {
     $group_obj->LoadUserDefinedGroup( $group->{Name} );
 
     if ($group_obj->Id) {
-        $self->_debug("Group $group->{Name} already exists as ".$group_obj->Id." updating their data");
-        my @results = $group_obj->Update( ARGSRef => $group, AttributesRef => [keys %$group] );
-        $self->_debug(join("\n",@results)||'no change');
+        my $message = "Group $group->{Name} already exists as ".$group_obj->Id;
+        if ($RT::LDAPUpdateOnly) {
+            $self->_debug("$message, updating their data");
+            my @results = $group_obj->Update( ARGSRef => $group, AttributesRef => [keys %$group] );
+            $self->_debug(join("\n",@results)||'no change');
+        } else {
+            $self->_debug("$message, skipping");
+        }
     }
 
     if ( !$group_obj->Id ) {
+        if ( $RT::LDAPUpdateOnly ) {
+            $self->_debug("Group $group->{Name} doesn't exist in RT, skipping");
+            return;
+        }
         my ($val, $msg) = $group_obj->CreateUserDefinedGroup( %$group );
 
         unless ($val) {
