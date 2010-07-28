@@ -110,7 +110,7 @@ sub _run_search {
         return;
     }
 
-    $self->_debug("search found ".$result->count." users");
+    $self->_debug("search found ".$result->count." objects");
     return $result;
 
 }
