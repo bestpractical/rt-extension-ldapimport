@@ -158,10 +158,11 @@ sub import_users {
         return;
     }
 
-    return unless $self->_check_ldap_mapping;
+    my $mapping = $RT::LDAPMapping;
+    return unless $self->_check_ldap_mapping( mapping => $mapping );
 
     while (my $entry = $results->shift_entry) {
-        my $user = $self->_build_user( ldap_entry => $entry );
+        my $user = $self->_build_object( ldap_entry => $entry, skip => qr/(?i)^CF\./, mapping => $mapping );
         $user->{Name} ||= $user->{EmailAddress};
         unless ( $user->{Name} ) {
             $self->_warn("No Name or Emailaddress for user, skipping ".Dumper $user);
@@ -260,10 +261,12 @@ ldap if there is no mapping.
 
 sub _check_ldap_mapping {
     my $self = shift;
+    my %args = @_;
+    my $mapping = $args{mapping};
 
-    my @rtfields = keys %{$RT::LDAPMapping||{}};
+    my @rtfields = keys %{$mapping};
     unless ( @rtfields ) {
-        $self->_error("No mapping found in RT::LDAPMapping, can't import");
+        $self->_error("No mapping found, can't import");
         $self->disconnect_ldap;
         return;
     }
@@ -271,21 +274,22 @@ sub _check_ldap_mapping {
     return 1;
 }
 
-=head2 _build_user 
+=head2 _build_object
 
-Builds up user data from LDAP for importing
+Builds up data from LDAP for importing
 Returns a hash of user data ready for RT::User::Create
 
 =cut
 
-sub _build_user {
+sub _build_object {
     my $self = shift;
     my %args = @_;
+    my $mapping = $args{mapping};
 
     my $user = {};
-    foreach my $rtfield ( keys %{$RT::LDAPMapping} ) {
-        next if $rtfield =~ /^CF\./i;
-        my $ldap_attribute = $RT::LDAPMapping->{$rtfield};
+    foreach my $rtfield ( keys %{$mapping} ) {
+        next if $rtfield =~ $args{skip};
+        my $ldap_attribute = $mapping->{$rtfield};
 
         my @attributes = $self->_parse_ldap_mapping($ldap_attribute);
         unless (@attributes) {
