@@ -703,6 +703,7 @@ sub add_group_members {
         );
         unless ( $ldap_users && $ldap_users->count ) {
             $self->_error("No user found for $member who should be a member of $groupname");
+            next;
         }
         my $ldap_user = $ldap_users->shift_entry;
         my $username = $ldap_user->get_value($RT::LDAPMapping->{Name});
