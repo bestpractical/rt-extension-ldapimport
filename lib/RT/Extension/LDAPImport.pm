@@ -670,6 +670,16 @@ sub create_rt_group {
 
 }
 
+=head3 add_group_members
+
+Iterate over the list of DNs in the Member_Attr LDAP entry.
+Look up the appropriate username from LDAP.
+Add those users to the group.
+Remove members of the RT Group who are no longer members
+of the LDAP group.
+
+=cut
+
 sub add_group_members {
     my $self = shift;
     my %args = @_;
