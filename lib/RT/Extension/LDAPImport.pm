@@ -698,8 +698,8 @@ sub add_group_members {
 
     foreach my $member (@$members) {
         my $ldap_users = $self->_run_search(
-            base   => $RT::LDAPBase,
-            filter => "(dn=$member)"
+            base   => $member,
+            filter => $RT::LDAPFilter,
         );
         unless ( $ldap_users && $ldap_users->count ) {
             $self->_error("No user found for $member who should be a member of $groupname");
