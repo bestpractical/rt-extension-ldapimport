@@ -559,21 +559,23 @@ sub import_groups {
         return;
     }
 
-    return unless $self->_check_ldap_mapping;
+    my $mapping = $RT::LDAPGroupMapping;
+    return unless $self->_check_ldap_mapping( mapping => $mapping );
 
     while (my $entry = $results->shift_entry) {
-        my $user = $self->_build_user( ldap_entry => $entry );
-        $user->{Name} ||= $user->{EmailAddress};
-        unless ( $user->{Name} ) {
-            $self->_warn("No Name or Emailaddress for user, skipping ".Dumper $user);
+        my $group = $self->_build_object( ldap_entry => $entry, skip => qr/(i)^Member_Attr/, mapping => $mapping );
+        $group->{Description} ||= 'Imported from LDAP';
+        unless ( $group->{Name} ) {
+            $self->_warn("No Name for group, skipping ".Dumper $group);
             next;
         }
         if ($args{import}) {
-            $self->_import_user( user => $user, ldap_entry => $entry );
+            $self->_import_group( group => $group, ldap_entry => $entry );
         } else {
-            $self->_show_user( user => $user );
+            $self->_show_group( group => $group );
         }
     }
+    return 1;
 }
 
 =head3 run_group_search
@@ -596,6 +598,83 @@ sub run_group_search {
 
 }
 
+
+=head2 _import_group
+
+The user has run us with --import, so bring data in
+
+=cut
+
+sub _import_group {
+    my $self = shift;
+    my %args = @_;
+    my $group = $args{group};
+    my $ldap_entry = $args{ldap_entry};
+
+    $self->_debug("Processing group $group->{Name}");
+    my $group_obj = $self->create_rt_group( group => $group );
+    return unless $group_obj;
+    $self->add_group_members( group => $group_obj, ldap_entry => $ldap_entry );
+    #$self->add_custom_field_value( group => $group_obj, ldap_entry => $ldap_entry );
+    return;
+}
+
+=head2 create_rt_group
+
+Takes a hashref of args to pass to RT::User::Create
+Will try loading the group and will only create a new
+group if it can't find an existing group with the Name
+or EmailAddress arg passed in.
+
+If the $LDAPUpdateUsers variable is true, data in RT
+will be clobbered with data in LDAP.  Otherwise we
+will skip to the next group.
+
+If $LDAPUpdateOnly is true, we will not create new groups
+but we will update existing ones.
+
+=cut
+
+sub create_rt_group {
+    my $self = shift;
+    my %args = @_;
+    my $group = $args{group};
+
+    my $group_obj = RT::Group->new($RT::SystemUser);
+    $group_obj->LoadUserDefinedGroup( $group->{Name} );
+
+    if ($group_obj->Id) {
+        $self->_debug("Group $group->{Name} already exists as ".$group_obj->Id." updating their data");
+        my @results = $group_obj->Update( ARGSRef => $group, AttributesRef => [keys %$group] );
+        $self->_debug(join("\n",@results)||'no change');
+    }
+
+    if ( !$group_obj->Id ) {
+        my ($val, $msg) = $group_obj->CreateUserDefinedGroup( %$group );
+
+        unless ($val) {
+            $self->_error("couldn't create group_obj for $group->{Name}: $msg");
+            return;
+        }
+        $self->_debug("Created group for $group->{Name} with id ".$group_obj->Id);
+    }
+
+    unless ($group_obj->Id) {
+        $self->_error("We couldn't find or create $group->{Name}. This should never happen");
+    }
+    return $group_obj;
+
+}
+
+sub add_group_members {
+    my $self = shift;
+    my %args = @_;
+    my $group = $args{group};
+    my $ldap_entry = $args{ldap_entry};
+
+    
+
+}
 
 =head3 disconnect_ldap
 
