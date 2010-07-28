@@ -33,7 +33,7 @@ if ($import) {
     print "Starting import\n";
     $importer->import_users(import => 1);
     print "Starting group import\n";
-    $import->import_groups(import => 1);
+    $importer->import_groups(import => 1);
     print "Finished import\n";
 } else {
     print <<TESTING;
@@ -43,6 +43,6 @@ Rerun command with --debug for more information
 TESTING
     $importer->import_users;
     print "Testing group import\n";
-    $import->import_groups();
+    $importer->import_groups();
     print "Finished test\n";
 }
