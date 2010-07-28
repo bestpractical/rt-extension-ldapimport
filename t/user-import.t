@@ -1,15 +1,13 @@
 use strict;
 use warnings;
 use lib 't/lib';
-use RT::Extension::LDAPImport::Test tests => 22;
+use RT::Extension::LDAPImport::Test tests => 21;
 eval { require Net::LDAP::Server::Test; 1; } or do {
     plan skip_all => 'Unable to test without Net::Server::LDAP::Test';
 };
 
 use Net::LDAP::Entry;
 use RT::User;
-
-my ($url, $m) = RT::Test->started_ok;
 
 my $importer = RT::Extension::LDAPImport->new;
 isa_ok($importer,'RT::Extension::LDAPImport');
