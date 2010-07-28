@@ -563,7 +563,7 @@ sub import_groups {
     return unless $self->_check_ldap_mapping( mapping => $mapping );
 
     while (my $entry = $results->shift_entry) {
-        my $group = $self->_build_object( ldap_entry => $entry, skip => qr/(i)^Member_Attr/, mapping => $mapping );
+        my $group = $self->_build_object( ldap_entry => $entry, skip => qr/(?i)^Member_Attr/, mapping => $mapping );
         $group->{Description} ||= 'Imported from LDAP';
         unless ( $group->{Name} ) {
             $self->_warn("No Name for group, skipping ".Dumper $group);
