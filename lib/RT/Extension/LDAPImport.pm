@@ -687,9 +687,7 @@ sub add_group_members {
     my $groupname = $group->Name;
     my $ldap_entry = $args{ldap_entry};
 
-    my $mapping = $RT::LDAPGroupMapping;
-
-    my $members = $ldap_entry->get_value($mapping->{Member_Attr}, asref => 1);
+    my $members = $self->_get_group_members_from_ldap(%args);
 
     unless (defined $members) {
         $self->_warn("No members found for $groupname in Member_Attr");
@@ -721,6 +719,17 @@ sub add_group_members {
     }
 
 }
+
+sub _get_group_members_from_ldap {
+    my $self = shift;
+    my %args = @_;
+    my $ldap_entry = $args{ldap_entry};
+
+    my $mapping = $RT::LDAPGroupMapping;
+
+    my $members = $ldap_entry->get_value($mapping->{Member_Attr}, asref => 1);
+}
+
 
 =head2 _show_group
 
