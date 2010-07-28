@@ -672,9 +672,55 @@ sub add_group_members {
     my $group = $args{group};
     my $ldap_entry = $args{ldap_entry};
 
-    
-
 }
+
+=head2 _show_group
+
+Show debugging information about the group record we're going to import
+when the groups reruns us with --import
+
+=cut
+
+sub _show_group {
+    my $self = shift;
+    my %args = @_;
+    my $group = $args{group};
+
+    my $rt_group = RT::Group->new($RT::SystemUser);
+    $rt_group->LoadUserDefinedGroup( $group->{Name} );
+
+    if ( $rt_group->Id ) {
+        print "Found existing group $group->{Name} to update\n";
+        $self->_show_group_info( %args, rt_group => $rt_group );
+    } else {
+        print "Found new group $group->{Name} to create in RT\n";
+        $self->_show_group_info( %args );
+    }
+}
+
+sub _show_group_info {
+    my $self = shift;
+    my %args = @_;
+    my $group = $args{group};
+    my $rt_group = $args{rt_group};
+
+    return unless $self->screendebug;
+
+    print "\tRT Field\tRT Value -> LDAP Value\n";
+    foreach my $key (sort keys %$group) {
+        my $old_value;
+        if ($rt_group) {
+            eval { $old_value = $rt_group->$key() };
+            if ($group->{$key} && $old_value eq $group->{$key}) {
+                $old_value = 'unchanged';
+            }
+        }
+        $old_value ||= 'unset';
+        print "\t$key\t$old_value => $group->{$key}\n";
+    }
+    #$self->_debug(Dumper($group));
+}
+
 
 =head3 disconnect_ldap
 
