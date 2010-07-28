@@ -572,7 +572,7 @@ sub import_groups {
         if ($args{import}) {
             $self->_import_group( group => $group, ldap_entry => $entry );
         } else {
-            $self->_show_group( group => $group );
+            $self->_show_group( group => $group, ldap_entry => $entry );
         }
     }
     return 1;
@@ -715,7 +715,7 @@ sub add_group_members {
         unless ($res) {
             $self->_warn("Failed to add $username to $groupname: $msg");
         }
-
+        $self->_debug("Added $username to $groupname");
     }
 
 }
@@ -775,7 +775,42 @@ sub _show_group_info {
         $old_value ||= 'unset';
         print "\t$key\t$old_value => $group->{$key}\n";
     }
-    #$self->_debug(Dumper($group));
+
+    my $members = $self->_get_group_members_from_ldap(%args);
+
+    my $ldap_members;
+    foreach my $member (@$members) {
+        my $ldap_users = $self->_run_search(
+            base   => $member,
+            filter => $RT::LDAPFilter,
+        );
+        unless ( $ldap_users && $ldap_users->count ) {
+            $self->_error("No user found for $member who should be a member of $group->{Name}");
+            next;
+        }
+        my $ldap_user = $ldap_users->shift_entry;
+        my $username = $ldap_user->get_value($RT::LDAPMapping->{Name});
+        $ldap_members->{$username}++;
+    }
+    my $rt_members;
+    if ($rt_group) {
+        my $user_members = $rt_group->UserMembersObj;
+        while ( my $member = $user_members->Next ) {
+            $rt_members->{$member->Name}++;
+        }
+        print "Comparing members in LDAP and RT\n";
+        foreach my $username (sort keys %$ldap_members) {
+            if ( delete $rt_members->{$username} ) {
+                print "\t$username\t in RT and LDAP\n";
+            } else {
+                print "\t$username\t in LDAP, will add to RT\n";
+            }
+        }
+        map { print "\t$_\t In RT, not LDAP, will remove from RT\n" } sort keys %$rt_members;
+    } else {
+        print "No existing group, adding the following members\n";
+        map { print "$_\n" } sort keys %$ldap_members;
+    }
 }
 
 
