@@ -687,11 +687,19 @@ sub add_group_members {
     my $groupname = $group->Name;
     my $ldap_entry = $args{ldap_entry};
 
+    $self->_debug("Processing group membership for $groupname");
+
     my $members = $self->_get_group_members_from_ldap(%args);
 
     unless (defined $members) {
         $self->_warn("No members found for $groupname in Member_Attr");
         return;
+    }
+
+    my $rt_group_members;
+    my $user_members = $group->UserMembersObj;
+    while ( my $member = $user_members->Next ) {
+        $rt_group_members->{$member->Name}++;
     }
 
     foreach my $member (@$members) {
@@ -705,6 +713,10 @@ sub add_group_members {
         }
         my $ldap_user = $ldap_users->shift_entry;
         my $username = $ldap_user->get_value($RT::LDAPMapping->{Name});
+        if ( delete $rt_group_members->{$username} ) {
+            $self->_debug("$username is already a member of $groupname skipping");
+            next;
+        }
         my $rt_user = RT::User->new($RT::SystemUser);
         my ($res,$msg) = $rt_user->Load( $username );
         unless ($res) {
@@ -718,6 +730,20 @@ sub add_group_members {
         $self->_debug("Added $username to $groupname");
     }
 
+    for my $username (sort keys %$rt_group_members) {
+        my $rt_user = RT::User->new($RT::SystemUser);
+        my ($res,$msg) = $rt_user->Load( $username );
+        unless ($res) {
+            $self->_warn("Unable to load $username: $msg");
+            next;
+        }
+        $self->_debug("Removing $username from $groupname because they are not a member in LDAP");
+        ($res,$msg) = $group->DeleteMember($rt_user->PrincipalObj->Id);
+        unless ($res) {
+            $self->_warn("Failed to remove $username to $groupname: $msg");
+        }
+
+    }
 }
 
 sub _get_group_members_from_ldap {
