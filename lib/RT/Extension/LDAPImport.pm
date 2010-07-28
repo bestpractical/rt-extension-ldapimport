@@ -684,6 +684,7 @@ sub add_group_members {
     my $self = shift;
     my %args = @_;
     my $group = $args{group};
+    my $groupname = $group->Name;
     my $ldap_entry = $args{ldap_entry};
 
     my $mapping = $RT::LDAPGroupMapping;
@@ -691,7 +692,7 @@ sub add_group_members {
     my $members = $ldap_entry->get_value($mapping->{Member_Attr}, asref => 1);
 
     unless (defined $members) {
-        $self->_warn("No members found for $group->{Name} in Member_Attr");
+        $self->_warn("No members found for $groupname in Member_Attr");
         return;
     }
 
@@ -701,7 +702,7 @@ sub add_group_members {
             filter => "(dn=$member)"
         );
         unless ( $ldap_users && $ldap_users->count ) {
-            $self->_warn("No user found for $member who should be a member of  ");
+            $self->_error("No user found for $member who should be a member of $groupname");
         }
         my $ldap_user = $ldap_users->shift_entry;
         my $username = $ldap_user->get_value($RT::LDAPMapping->{Name});
@@ -713,7 +714,7 @@ sub add_group_members {
         }
         ($res,$msg) = $group->AddMember($rt_user->PrincipalObj->Id);
         unless ($res) {
-            $self->_warn("Failed to add $username to $group->{Name}: $msg");
+            $self->_warn("Failed to add $username to $groupname: $msg");
         }
 
     }
