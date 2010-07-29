@@ -26,9 +26,9 @@ your RT_SiteConfig file
 Hostname or ldap(s):// uri
  Set($LDAPHost,'our.ldap.host');
 
-Your LDAP username
+Your LDAP username or DN
 Leaving this unset will cause us to use an anonymous bind
- Set($LDAPUser, 'user cn');
+ Set($LDAPUser, 'uid=foo,ou=users,dc=example,dc=com');
 
 Your LDAP Password
  Set($LDAPPassword, 'ldap pass');
