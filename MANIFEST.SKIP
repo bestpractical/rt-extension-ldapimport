@@ -34,4 +34,7 @@
 \bcover_db\b
 #!end included /opt/local/lib/perl5/5.8.9/ExtUtils/MANIFEST.SKIP
 
-bin/rtldapimport
+bin/rtldapimport$
+t/lib/RT/Extension/LDAPImport/Test.pm$
+
+t/tmp/
