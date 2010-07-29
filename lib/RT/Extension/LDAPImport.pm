@@ -814,17 +814,23 @@ sub _show_group_info {
     my $members = $self->_get_group_members_from_ldap(%args);
 
     my $ldap_members;
+    my $dnlist = $self->_dnlist;
     foreach my $member (@$members) {
-        my $ldap_users = $self->_run_search(
-            base   => $member,
-            filter => $RT::LDAPFilter,
-        );
-        unless ( $ldap_users && $ldap_users->count ) {
-            $self->_error("No user found for $member who should be a member of $group->{Name}");
-            next;
+        my $username;
+        if ($username = $dnlist->{$member}) {
+            $self->_debug("Found $username in cache for $member");
+        } else {
+            my $ldap_users = $self->_run_search(
+                base   => $member,
+                filter => $RT::LDAPFilter,
+            );
+            unless ( $ldap_users && $ldap_users->count ) {
+                $self->_error("No user found for $member who should be a member of $group->{Name}");
+                next;
+            }
+            my $ldap_user = $ldap_users->shift_entry;
+            my $username = $ldap_user->get_value($RT::LDAPMapping->{Name});
         }
-        my $ldap_user = $ldap_users->shift_entry;
-        my $username = $ldap_user->get_value($RT::LDAPMapping->{Name});
         $ldap_members->{$username}++;
     }
     my $rt_members;
