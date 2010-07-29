@@ -5,7 +5,7 @@ our $VERSION = '0.30_01';
 use warnings;
 use strict;
 use base qw(Class::Accessor);
-__PACKAGE__->mk_accessors(qw(_ldap _group screendebug));
+__PACKAGE__->mk_accessors(qw(_ldap _group screendebug _dnlist));
 use Carp;
 use Net::LDAP;
 use Data::Dumper;
@@ -192,6 +192,9 @@ sub _import_user {
     $self->_debug("Processing user $user->{Name}");
     my $user_obj = $self->create_rt_user( user => $user );
     return unless $user_obj;
+    my $dnlist = $self->_dnlist;
+    $dnlist->{$ldap_entry->dn} = $user->{Name};
+    $self->_dnlist($dnlist);
     $self->add_user_to_group( user => $user_obj );
     $self->add_custom_field_value( user => $user_obj, ldap_entry => $ldap_entry );
     return;
@@ -702,17 +705,23 @@ sub add_group_members {
         $rt_group_members->{$member->Name}++;
     }
 
+    my $dnlist = $self->_dnlist;
     foreach my $member (@$members) {
-        my $ldap_users = $self->_run_search(
-            base   => $member,
-            filter => $RT::LDAPFilter,
-        );
-        unless ( $ldap_users && $ldap_users->count ) {
-            $self->_error("No user found for $member who should be a member of $groupname");
-            next;
+        my $username;
+        if ($username = $dnlist->{$member}) {
+            $self->_debug("Found $username in cache for $member");
+        } else {
+            my $ldap_users = $self->_run_search(
+                base   => $member,
+                filter => $RT::LDAPFilter,
+            );
+            unless ( $ldap_users && $ldap_users->count ) {
+                $self->_error("No user found for $member who should be a member of $groupname");
+                next;
+            }
+            my $ldap_user = $ldap_users->shift_entry;
+            $username = $ldap_user->get_value($RT::LDAPMapping->{Name});
         }
-        my $ldap_user = $ldap_users->shift_entry;
-        my $username = $ldap_user->get_value($RT::LDAPMapping->{Name});
         if ( delete $rt_group_members->{$username} ) {
             $self->_debug("$username is already a member of $groupname skipping");
             next;
