@@ -95,6 +95,8 @@ Attribute in RT => Attribute in LDAP
 The mapping logic is the same as the LDAPMapping.
 There is one important special-case variable, Member_Attr
 Use this to tell the importer which attribute will contain DNs of group members
+If you do not specify a Description attribute, it will be filled with
+'Imported from LDAP'
 
 RUNNING THE IMPORT
 
