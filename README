@@ -93,7 +93,7 @@ Attribute in RT => Attribute in LDAP
                          Member_Attr  => 'member'});
 
 The mapping logic is the same as the LDAPMapping.
-There is one important special-case variable, Member_attr
+There is one important special-case variable, Member_Attr
 Use this to tell the importer which attribute will contain DNs of group members
 
 RUNNING THE IMPORT
