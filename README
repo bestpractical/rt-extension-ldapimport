@@ -80,6 +80,22 @@ users.  This setting overrides $LDAPUpdateUsers but skips users
 who can't be found in RT.
  Set($LDAPUpdateOnly,1);
 
+Where to search for groups to import
+ Set($LDAPGroupBase, 'ou=Groups,o=Our Place');
+
+The search filter to apply (in this case, find all the bobs)
+ Set($LDAPGroupFilter, '(&(cn = bob*))');
+
+A mapping of
+Attribute in RT => Attribute in LDAP
+(this has changed since version 1, which was the other way around)
+ Set($LDAPGroupMapping, {Name         => 'cn',
+                         Member_Attr  => 'member'});
+
+The mapping logic is the same as the LDAPMapping.
+There is one important special-case variable, Member_attr
+Use this to tell the importer which attribute will contain DNs of group members
+
 RUNNING THE IMPORT
 
 If RT is not installed in /opt/rt3, you will need to change the 
