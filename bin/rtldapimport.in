@@ -18,10 +18,10 @@ use Getopt::Long;
 GetOptions ( "debug" => \$debug, "help" => \$help, "import" => \$import );
 if ($help) {
    print <<USAGE;
-$0: [--debug] [--import] [--help]\n";
-     --help           This usage statement.\n";
-     --debug          Enable debugging.\n";
-     --import         Do the import.\n";
+$0: [--debug] [--import] [--help]
+     --help           This usage statement.
+     --debug          Enable debugging.
+     --import         Do the import.
 USAGE
    exit 0;
 }
