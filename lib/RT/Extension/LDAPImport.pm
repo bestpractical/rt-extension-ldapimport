@@ -193,7 +193,7 @@ sub _import_user {
     my $user_obj = $self->create_rt_user( user => $user );
     return unless $user_obj;
     my $dnlist = $self->_dnlist;
-    $dnlist->{$ldap_entry->dn} = $user->{Name};
+    $dnlist->{lc $ldap_entry->dn} = $user->{Name};
     $self->_dnlist($dnlist);
     $self->add_user_to_group( user => $user_obj );
     $self->add_custom_field_value( user => $user_obj, ldap_entry => $ldap_entry );
@@ -708,8 +708,8 @@ sub add_group_members {
     my $dnlist = $self->_dnlist;
     foreach my $member (@$members) {
         my $username;
-        if (exists $dnlist->{$member}) {
-            if ($username = $dnlist->{$member}) {
+        if (exists $dnlist->{lc $member}) {
+            if ($username = $dnlist->{lc $member}) {
                 $self->_debug("Found $username in cache for $member");
             } else {
                 $self->_debug("Negative cache in cache for $member");
@@ -721,12 +721,12 @@ sub add_group_members {
                 filter => $RT::LDAPFilter,
             );
             unless ( $ldap_users && $ldap_users->count ) {
-                $dnlist->{$member} = undef;
+                $dnlist->{lc $member} = undef;
                 $self->_error("No user found for $member who should be a member of $groupname");
                 next;
             }
             my $ldap_user = $ldap_users->shift_entry;
-            $username = $ldap_user->get_value($RT::LDAPMapping->{Name});
+            $dnlist->{lc $member} = $username = $ldap_user->get_value($RT::LDAPMapping->{Name});
         }
         if ( delete $rt_group_members->{$username} ) {
             $self->_debug("$username is already a member of $groupname skipping");
@@ -823,8 +823,8 @@ sub _show_group_info {
     my $dnlist = $self->_dnlist;
     foreach my $member (@$members) {
         my $username;
-        if (exists $dnlist->{$member}) {
-            if ($username = $dnlist->{$member}) {
+        if (exists $dnlist->{lc $member}) {
+            if ($username = $dnlist->{lc $member}) {
                 $self->_debug("Found $username in cache for $member");
             } else {
                 $self->_debug("Negative cache in cache for $member");
@@ -836,12 +836,12 @@ sub _show_group_info {
                 filter => $RT::LDAPFilter,
             );
             unless ( $ldap_users && $ldap_users->count ) {
-                $dnlist->{$member} = undef;
+                $dnlist->{lc $member} = undef;
                 $self->_error("No user found for $member who should be a member of $group->{Name}");
                 next;
             }
             my $ldap_user = $ldap_users->shift_entry;
-            my $username = $ldap_user->get_value($RT::LDAPMapping->{Name});
+            $dnlist->{lc $member} = $username = $ldap_user->get_value($RT::LDAPMapping->{Name});
         }
         $ldap_members->{$username}++;
     }
