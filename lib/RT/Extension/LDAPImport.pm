@@ -708,14 +708,20 @@ sub add_group_members {
     my $dnlist = $self->_dnlist;
     foreach my $member (@$members) {
         my $username;
-        if ($username = $dnlist->{$member}) {
-            $self->_debug("Found $username in cache for $member");
+        if (exists $dnlist->{$member}) {
+            if ($username = $dnlist->{$member}) {
+                $self->_debug("Found $username in cache for $member");
+            } else {
+                $self->_debug("Negative cache in cache for $member");
+                next;
+            }
         } else {
             my $ldap_users = $self->_run_search(
                 base   => $member,
                 filter => $RT::LDAPFilter,
             );
             unless ( $ldap_users && $ldap_users->count ) {
+                $dnlist->{$member} = undef;
                 $self->_error("No user found for $member who should be a member of $groupname");
                 next;
             }
@@ -817,14 +823,20 @@ sub _show_group_info {
     my $dnlist = $self->_dnlist;
     foreach my $member (@$members) {
         my $username;
-        if ($username = $dnlist->{$member}) {
-            $self->_debug("Found $username in cache for $member");
+        if (exists $dnlist->{$member}) {
+            if ($username = $dnlist->{$member}) {
+                $self->_debug("Found $username in cache for $member");
+            } else {
+                $self->_debug("Negative cache in cache for $member");
+                next;
+            }
         } else {
             my $ldap_users = $self->_run_search(
                 base   => $member,
                 filter => $RT::LDAPFilter,
             );
             unless ( $ldap_users && $ldap_users->count ) {
+                $dnlist->{$member} = undef;
                 $self->_error("No user found for $member who should be a member of $group->{Name}");
                 next;
             }
