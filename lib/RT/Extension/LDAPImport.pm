@@ -555,11 +555,7 @@ sub import_groups {
             $self->_warn("No Name for group, skipping ".Dumper $group);
             next;
         }
-        if ($args{import}) {
-            $self->_import_group( group => $group, ldap_entry => $entry );
-        } else {
-            $self->_show_group( group => $group, ldap_entry => $entry );
-        }
+        $self->_import_group( %args, group => $group, ldap_entry => $entry );
     }
     return 1;
 }
@@ -598,9 +594,9 @@ sub _import_group {
     my $ldap_entry = $args{ldap_entry};
 
     $self->_debug("Processing group $group->{Name}");
-    my $group_obj = $self->create_rt_group( group => $group );
-    return unless $group_obj;
-    $self->add_group_members( group => $group_obj, ldap_entry => $ldap_entry );
+    my $group_obj = $self->create_rt_group( %args, group => $group );
+    return if $args{import} and not $group_obj;
+    $self->add_group_members( %args, name => $group->{Name}, group => $group_obj, ldap_entry => $ldap_entry );
     return;
 }
 
@@ -627,26 +623,35 @@ sub create_rt_group {
     if ($group_obj->Id) {
         my $message = "Group $group->{Name} already exists as ".$group_obj->Id;
         if ($RT::LDAPUpdateOnly) {
-            $self->_debug("$message, updating their data");
-            my @results = $group_obj->Update( ARGSRef => $group, AttributesRef => [keys %$group] );
-            $self->_debug(join("\n",@results)||'no change');
+            if ($args{import}) {
+                $self->_debug("$message, updating their data");
+                my @results = $group_obj->Update( ARGSRef => $group, AttributesRef => [keys %$group] );
+                $self->_debug(join("\n",@results)||'no change');
+            } else {
+                print "Found existing group $group->{Name} to update\n";
+                $self->_show_group_info( %args, rt_group => $group_obj );
+            }
         } else {
             $self->_debug("$message, skipping");
         }
-    }
-
-    if ( !$group_obj->Id ) {
+    } else {
         if ( $RT::LDAPUpdateOnly ) {
             $self->_debug("Group $group->{Name} doesn't exist in RT, skipping");
             return;
         }
-        my ($val, $msg) = $group_obj->CreateUserDefinedGroup( %$group );
 
-        unless ($val) {
-            $self->_error("couldn't create group_obj for $group->{Name}: $msg");
+        if ($args{import}) {
+            my ($val, $msg) = $group_obj->CreateUserDefinedGroup( %$group );
+            unless ($val) {
+                $self->_error("couldn't create group_obj for $group->{Name}: $msg");
+                return;
+            }
+            $self->_debug("Created group for $group->{Name} with id ".$group_obj->Id);
+        } else {
+            print "Found new group $group->{Name} to create in RT\n";
+            $self->_show_group_info( %args );
             return;
         }
-        $self->_debug("Created group for $group->{Name} with id ".$group_obj->Id);
     }
 
     unless ($group_obj->Id) {
@@ -670,7 +675,7 @@ sub add_group_members {
     my $self = shift;
     my %args = @_;
     my $group = $args{group};
-    my $groupname = $group->Name;
+    my $groupname = $args{name};
     my $ldap_entry = $args{ldap_entry};
 
     $self->_debug("Processing group membership for $groupname");
@@ -682,22 +687,21 @@ sub add_group_members {
         return;
     }
 
-    my $rt_group_members;
-    my $user_members = $group->UserMembersObj;
-    while ( my $member = $user_members->Next ) {
-        $rt_group_members->{$member->Name}++;
+    my $rt_group_members = {};
+    if ($args{group}) {
+        my $user_members = $group->UserMembersObj;
+        while ( my $member = $user_members->Next ) {
+            $rt_group_members->{$member->Name}++;
+        }
+    } elsif (not $args{import}) {
+        $self->_debug("No group in RT, would create with members:");
     }
 
     my $dnlist = $self->_dnlist;
     foreach my $member (@$members) {
         my $username;
         if (exists $dnlist->{lc $member}) {
-            if ($username = $dnlist->{lc $member}) {
-                $self->_debug("Found $username in cache for $member");
-            } else {
-                $self->_debug("Negative cache in cache for $member");
-                next;
-            }
+            next unless $username = $dnlist->{lc $member};
         } else {
             my $ldap_users = $self->_run_search(
                 base   => $member,
@@ -712,9 +716,12 @@ sub add_group_members {
             $dnlist->{lc $member} = $username = $ldap_user->get_value($RT::LDAPMapping->{Name});
         }
         if ( delete $rt_group_members->{$username} ) {
-            $self->_debug("$username is already a member of $groupname skipping");
+            $self->_debug("\t$username\tin RT and LDAP");
             next;
         }
+        $self->_debug($group ? "\t$username\tin LDAP, adding to RT" : "\t$username");
+        next unless $args{import};
+
         my $rt_user = RT::User->new($RT::SystemUser);
         my ($res,$msg) = $rt_user->Load( $username );
         unless ($res) {
@@ -725,22 +732,22 @@ sub add_group_members {
         unless ($res) {
             $self->_warn("Failed to add $username to $groupname: $msg");
         }
-        $self->_debug("Added $username to $groupname");
     }
 
     for my $username (sort keys %$rt_group_members) {
+        $self->_debug("\t$username\tin RT, not in LDAP, removing");
+        next unless $args{import};
+
         my $rt_user = RT::User->new($RT::SystemUser);
         my ($res,$msg) = $rt_user->Load( $username );
         unless ($res) {
             $self->_warn("Unable to load $username: $msg");
             next;
         }
-        $self->_debug("Removing $username from $groupname because they are not a member in LDAP");
         ($res,$msg) = $group->DeleteMember($rt_user->PrincipalObj->Id);
         unless ($res) {
             $self->_warn("Failed to remove $username to $groupname: $msg");
         }
-
     }
 }
 
@@ -798,54 +805,6 @@ sub _show_group_info {
         }
         $old_value ||= 'unset';
         print "\t$key\t$old_value => $group->{$key}\n";
-    }
-
-    my $members = $self->_get_group_members_from_ldap(%args);
-
-    my $ldap_members;
-    my $dnlist = $self->_dnlist;
-    foreach my $member (@$members) {
-        my $username;
-        if (exists $dnlist->{lc $member}) {
-            if ($username = $dnlist->{lc $member}) {
-                $self->_debug("Found $username in cache for $member");
-            } else {
-                $self->_debug("Negative cache in cache for $member");
-                next;
-            }
-        } else {
-            my $ldap_users = $self->_run_search(
-                base   => $member,
-                filter => $RT::LDAPFilter,
-            );
-            unless ( $ldap_users && $ldap_users->count ) {
-                $dnlist->{lc $member} = undef;
-                $self->_error("No user found for $member who should be a member of $group->{Name}");
-                next;
-            }
-            my $ldap_user = $ldap_users->shift_entry;
-            $dnlist->{lc $member} = $username = $ldap_user->get_value($RT::LDAPMapping->{Name});
-        }
-        $ldap_members->{$username}++;
-    }
-    my $rt_members;
-    if ($rt_group) {
-        my $user_members = $rt_group->UserMembersObj;
-        while ( my $member = $user_members->Next ) {
-            $rt_members->{$member->Name}++;
-        }
-        print "Comparing members in LDAP and RT\n";
-        foreach my $username (sort keys %$ldap_members) {
-            if ( delete $rt_members->{$username} ) {
-                print "\t$username\t in RT and LDAP\n";
-            } else {
-                print "\t$username\t in LDAP, will add to RT\n";
-            }
-        }
-        map { print "\t$_\t In RT, not LDAP, will remove from RT\n" } sort keys %$rt_members;
-    } else {
-        print "No existing group, adding the following members\n";
-        map { print "$_\n" } sort keys %$ldap_members;
     }
 }
 
