@@ -163,6 +163,7 @@ sub import_users {
 
     $self->_dnlist({});
 
+    my $done = 0; my $count = $results->count;
     while (my $entry = $results->shift_entry) {
         my $user = $self->_build_object( ldap_entry => $entry, skip => qr/(?i)^CF\./, mapping => $mapping );
         $user->{Name} ||= $user->{EmailAddress};
@@ -171,6 +172,8 @@ sub import_users {
             next;
         }
         $self->_import_user( user => $user, ldap_entry => $entry, import => $args{import} );
+        $done++;
+        $self->_debug("Imported $done/$count users");
     }
     return 1;
 }
@@ -548,6 +551,7 @@ sub import_groups {
     my $mapping = $RT::LDAPGroupMapping;
     return unless $self->_check_ldap_mapping( mapping => $mapping );
 
+    my $done = 0; my $count = $results->count;
     while (my $entry = $results->shift_entry) {
         my $group = $self->_build_object( ldap_entry => $entry, skip => qr/(?i)^Member_Attr/, mapping => $mapping );
         $group->{Description} ||= 'Imported from LDAP';
@@ -556,6 +560,8 @@ sub import_groups {
             next;
         }
         $self->_import_group( %args, group => $group, ldap_entry => $entry );
+        $done++;
+        $self->_debug("Imported $done/$count groups");
     }
     return 1;
 }
