@@ -170,11 +170,7 @@ sub import_users {
             $self->_warn("No Name or Emailaddress for user, skipping ".Dumper $user);
             next;
         }
-        if ($args{import}) {
-            $self->_import_user( user => $user, ldap_entry => $entry );
-        } else {
-            $self->_show_user( user => $user );
-        }
+        $self->_import_user( user => $user, ldap_entry => $entry, import => $args{import} );
     }
     return 1;
 }
@@ -188,47 +184,17 @@ The user has run us with --import, so bring data in
 sub _import_user {
     my $self = shift;
     my %args = @_;
-    my $user = $args{user};
-    my $ldap_entry = $args{ldap_entry};
 
-    $self->_debug("Processing user $user->{Name}");
-    my $user_obj = $self->create_rt_user( user => $user );
-    return unless $user_obj;
-    $self->_dnlist->{lc $ldap_entry->dn} = $user->{Name};
-    $self->add_user_to_group( user => $user_obj );
-    $self->add_custom_field_value( user => $user_obj, ldap_entry => $ldap_entry );
-    return;
-}
+    $self->_debug("Processing user $args{user}{Name}");
+    $self->_dnlist->{lc $args{ldap_entry}->dn} = $args{user}{Name};
 
-=head2 _show_user
+    $args{user} = $self->create_rt_user( %args );
+    return unless $args{user};
 
-Show debugging information about the user record we're going to import
-when the users reruns us with --import
+    $self->add_user_to_group( %args );
+    $self->add_custom_field_value( %args );
 
-=cut
-
-sub _show_user {
-    my $self = shift;
-    my %args = @_;
-    my $user = $args{user};
-
-    my $rt_user = $self->_load_rt_user(%args);
-
-    if ( $rt_user->Id ) {
-        if ( $RT::LDAPUpdateUsers || $RT::LDAPUpdateOnly ) {
-            print "Found existing user $user->{Name} to update\n";
-            $self->_show_user_info( %args, rt_user => $rt_user );
-        } else {
-            print "Found existing user $user->{Name} skipping\n";
-        }
-    } else {
-        if ( $RT::LDAPUpdateOnly ) {
-            print "$user->{Name} doesn't exist in RT, skipping\n";
-        } else {
-            print "Found new user $user->{Name} to create in RT\n";
-            $self->_show_user_info( %args );
-        }
-    }
+    return 1;
 }
 
 sub _show_user_info {
@@ -373,25 +339,34 @@ sub create_rt_user {
         my $message = "User $user->{Name} already exists as ".$user_obj->Id;
         if ($RT::LDAPUpdateUsers || $RT::LDAPUpdateOnly) {
             $self->_debug("$message, updating their data");
-            my @results = $user_obj->Update( ARGSRef => $user, AttributesRef => [keys %$user] );
-            $self->_debug(join("\n",@results)||'no change');
+            if ($args{import}) {
+                my @results = $user_obj->Update( ARGSRef => $user, AttributesRef => [keys %$user] );
+                $self->_debug(join("\n",@results)||'no change');
+            } else {
+                $self->_debug("Found existing user $user->{Name} to update");
+                $self->_show_user_info( %args, rt_user => $user_obj );
+            }
         } else {
             $self->_debug("$message, skipping");
         }
-    }
-
-    if ( !$user_obj->Id ) {
+    } else {
         if ( $RT::LDAPUpdateOnly ) {
             $self->_debug("User $user->{Name} doesn't exist in RT, skipping");
             return;
         } else {
-            my ($val, $msg) = $user_obj->Create( %$user, Privileged => 0 );
+            if ($args{import}) {
+                my ($val, $msg) = $user_obj->Create( %$user, Privileged => 0 );
 
-            unless ($val) {
-                $self->_error("couldn't create user_obj for $user->{Name}: $msg");
+                unless ($val) {
+                    $self->_error("couldn't create user_obj for $user->{Name}: $msg");
+                    return;
+                }
+                $self->_debug("Created user for $user->{Name} with id ".$user_obj->Id);
+            } else {
+                print "Found new user $user->{Name} to create in RT\n";
+                $self->_show_user_info( %args );
                 return;
             }
-            $self->_debug("Created user for $user->{Name} with id ".$user_obj->Id);
         }
     }
 
@@ -441,14 +416,18 @@ sub add_user_to_group {
         return;
     }
 
-    my ($status, $msg) = $group->AddMember($principal->Id);
-    if ($status) {
-        $self->_debug("Added ".$user->Name." to ".$group->Name." [$msg]");
+    if ($args{import}) {
+        my ($status, $msg) = $group->AddMember($principal->Id);
+        if ($status) {
+            $self->_debug("Added ".$user->Name." to ".$group->Name." [$msg]");
+        } else {
+            $self->_error("Couldn't add ".$user->Name." to ".$group->Name." [$msg]");
+        }
+        return $status;
     } else {
-        $self->_error("Couldn't add ".$user->Name." to ".$group->Name." [$msg]");
+        $self->_debug("Would add to ".$group->Name);
+        return;
     }
-
-    return $status;
 }
 
 =head2 setup_group
@@ -524,11 +503,15 @@ sub add_custom_field_value {
             next;
         }
 
-        ($status, $msg) = $cf->AddValue( Name => $cfv_name );
-        if ($status) {
-            $self->_debug("Added '$cfv_name' to Custom Field '$cf_name' [$msg]");
+        if ($args{import}) {
+            ($status, $msg) = $cf->AddValue( Name => $cfv_name );
+            if ($status) {
+                $self->_debug("Added '$cfv_name' to Custom Field '$cf_name' [$msg]");
+            } else {
+                $self->_error("Couldn't add '$cfv_name' to '$cf_name' [$msg]");
+            }
         } else {
-            $self->_error("Couldn't add '$cfv_name' to '$cf_name' [$msg]");
+            $self->_debug("Would add '$cfv_name' to Custom Field '$cf_name'");
         }
     }
 
