@@ -161,6 +161,8 @@ sub import_users {
     my $mapping = $RT::LDAPMapping;
     return unless $self->_check_ldap_mapping( mapping => $mapping );
 
+    $self->_dnlist({});
+
     while (my $entry = $results->shift_entry) {
         my $user = $self->_build_object( ldap_entry => $entry, skip => qr/(?i)^CF\./, mapping => $mapping );
         $user->{Name} ||= $user->{EmailAddress};
@@ -192,9 +194,7 @@ sub _import_user {
     $self->_debug("Processing user $user->{Name}");
     my $user_obj = $self->create_rt_user( user => $user );
     return unless $user_obj;
-    my $dnlist = $self->_dnlist;
-    $dnlist->{lc $ldap_entry->dn} = $user->{Name};
-    $self->_dnlist($dnlist);
+    $self->_dnlist->{lc $ldap_entry->dn} = $user->{Name};
     $self->add_user_to_group( user => $user_obj );
     $self->add_custom_field_value( user => $user_obj, ldap_entry => $ldap_entry );
     return;
