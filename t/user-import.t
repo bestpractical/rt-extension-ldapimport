@@ -47,7 +47,7 @@ $importer->screendebug(1) if ($ENV{TEST_VERBOSE});
 ok($importer->import_users());
 {
     my $users = RT::Users->new($RT::SystemUser);
-    for my $username (qw/RT_SYSTEM root Nobody/) {
+    for my $username (qw/RT_System root Nobody/) {
         $users->Limit( FIELD => 'Name', OPERATOR => '!=', VALUE => $username, ENTRYAGGREGATOR => 'AND' );
     }
     is($users->Count,0);
