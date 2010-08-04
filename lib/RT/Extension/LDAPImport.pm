@@ -695,7 +695,7 @@ sub add_group_members {
 
     my $rt_group_members = {};
     if ($args{group}) {
-        my $user_members = $group->UserMembersObj;
+        my $user_members = $group->UserMembersObj( Recursively => 0);
         while ( my $member = $user_members->Next ) {
             $rt_group_members->{$member->Name}++;
         }
