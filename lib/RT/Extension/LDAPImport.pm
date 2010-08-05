@@ -616,6 +616,9 @@ or EmailAddress arg passed in.
 If $LDAPUpdateOnly is true, we will not create new groups
 but we will update existing ones.
 
+There is currently no way to prevent Group data from being
+clobbered from LDAP.
+
 =cut
 
 sub create_rt_group {
@@ -628,17 +631,13 @@ sub create_rt_group {
 
     if ($group_obj->Id) {
         my $message = "Group $group->{Name} already exists as ".$group_obj->Id;
-        if ($RT::LDAPUpdateOnly) {
-            if ($args{import}) {
-                $self->_debug("$message, updating their data");
-                my @results = $group_obj->Update( ARGSRef => $group, AttributesRef => [keys %$group] );
-                $self->_debug(join("\n",@results)||'no change');
-            } else {
-                print "Found existing group $group->{Name} to update\n";
-                $self->_show_group_info( %args, rt_group => $group_obj );
-            }
+        if ($args{import}) {
+            $self->_debug("$message, updating their data");
+            my @results = $group_obj->Update( ARGSRef => $group, AttributesRef => [keys %$group] );
+            $self->_debug(join("\n",@results)||'no change');
         } else {
-            $self->_debug("$message, skipping");
+            print "Found existing group $group->{Name} to update\n";
+            $self->_show_group_info( %args, rt_group => $group_obj );
         }
     } else {
         if ( $RT::LDAPUpdateOnly ) {
