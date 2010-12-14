@@ -1,4 +1,8 @@
 Revision history for RT-Extension-LDAPImport
+0.31_03
+    Upgrade Module::Install::RTx so it can find RT.pm
+    and version check properly.
+
 0.31_02
     packaging fix since Module::Install doesn't support
     require(RT => '3.6.3'); as well as it could
