@@ -37,5 +37,6 @@ substitute(
     q(t/lib/RT/Extension/LDAPImport/Test.pm),
 );
 
+sign;
 &auto_install();
 &WriteAll;
