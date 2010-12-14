@@ -76,8 +76,8 @@ data with data from LDAP.
 Should we import new users or just update existing ones?
 By default, we create users who don't exist in RT but do
 match your LDAP filter and obey $LDAPUpdateUsers for existing
-users.  This setting overrides $LDAPUpdateUsers but skips users
-who can't be found in RT.
+users.  This setting overrides $LDAPUpdateUsers but won't create
+users who are found in LDAP but not in RT.
  Set($LDAPUpdateOnly,1);
 
 Where to search for groups to import
