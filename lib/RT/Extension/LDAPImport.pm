@@ -692,11 +692,11 @@ sub add_group_members {
         return;
     }
 
-    my $rt_group_members = {};
+    my %rt_group_members;
     if ($args{group}) {
         my $user_members = $group->UserMembersObj( Recursively => 0);
         while ( my $member = $user_members->Next ) {
-            $rt_group_members->{$member->Name} = $member;
+            $rt_group_members{$member->Name} = $member;
         }
     } elsif (not $args{import}) {
         $self->_debug("No group in RT, would create with members:");
@@ -720,7 +720,7 @@ sub add_group_members {
             my $ldap_user = $ldap_users->shift_entry;
             $dnlist->{lc $member} = $username = $ldap_user->get_value($RT::LDAPMapping->{Name});
         }
-        if ( delete $rt_group_members->{$username} ) {
+        if ( delete $rt_group_members{$username} ) {
             $self->_debug("\t$username\tin RT and LDAP");
             next;
         }
@@ -739,11 +739,11 @@ sub add_group_members {
         }
     }
 
-    for my $username (sort keys %$rt_group_members) {
+    for my $username (sort keys %rt_group_members) {
         $self->_debug("\t$username\tin RT, not in LDAP, removing");
         next unless $args{import};
 
-        my ($res,$msg) = $group->DeleteMember($rt_group_members->{$username}->PrincipalObj->Id);
+        my ($res,$msg) = $group->DeleteMember($rt_group_members{$username}->PrincipalObj->Id);
         unless ($res) {
             $self->_warn("Failed to remove $username to $groupname: $msg");
         }
