@@ -600,9 +600,9 @@ sub _import_group {
     my $ldap_entry = $args{ldap_entry};
 
     $self->_debug("Processing group $group->{Name}");
-    my $group_obj = $self->create_rt_group( %args, group => $group );
+    my ($group_obj, $created) = $self->create_rt_group( %args, group => $group );
     return if $args{import} and not $group_obj;
-    $self->add_group_members( %args, name => $group->{Name}, group => $group_obj, ldap_entry => $ldap_entry );
+    $self->add_group_members( %args, name => $group->{Name}, group => $group_obj, ldap_entry => $ldap_entry, new => $created );
     return;
 }
 
@@ -629,10 +629,10 @@ sub create_rt_group {
     my $group_obj = RT::Group->new($RT::SystemUser);
     $group_obj->LoadUserDefinedGroup( $group->{Name} );
 
+    my $created;
     if ($group_obj->Id) {
-        my $message = "Group $group->{Name} already exists as ".$group_obj->Id;
         if ($args{import}) {
-            $self->_debug("$message, updating their data");
+            $self->_debug("Group $group->{Name} already exists as ".$group_obj->Id.", updating their data");
             my @results = $group_obj->Update( ARGSRef => $group, AttributesRef => [keys %$group] );
             $self->_debug(join("\n",@results)||'no change');
         } else {
@@ -651,6 +651,7 @@ sub create_rt_group {
                 $self->_error("couldn't create group_obj for $group->{Name}: $msg");
                 return;
             }
+            $created = $val;
             $self->_debug("Created group for $group->{Name} with id ".$group_obj->Id);
         } else {
             print "Found new group $group->{Name} to create in RT\n";
@@ -662,7 +663,7 @@ sub create_rt_group {
     unless ($group_obj->Id) {
         $self->_error("We couldn't find or create $group->{Name}. This should never happen");
     }
-    return $group_obj;
+    return ($group_obj, $created);
 
 }
 
@@ -693,7 +694,7 @@ sub add_group_members {
     }
 
     my %rt_group_members;
-    if ($args{group}) {
+    if ($args{group} and not $args{new}) {
         my $user_members = $group->UserMembersObj( Recursively => 0);
         while ( my $member = $user_members->Next ) {
             $rt_group_members{$member->Name} = $member;
