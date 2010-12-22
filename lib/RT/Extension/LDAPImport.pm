@@ -281,7 +281,7 @@ sub _build_object {
     return $object;
 }
 
-=head3 _parse_ldap_map
+=head3 _parse_ldap_mapping
 
 Internal helper function for import_user
 If we're passed an arrayref, it will recurse 
