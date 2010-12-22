@@ -696,7 +696,7 @@ sub add_group_members {
     if ($args{group}) {
         my $user_members = $group->UserMembersObj( Recursively => 0);
         while ( my $member = $user_members->Next ) {
-            $rt_group_members->{$member->Name}++;
+            $rt_group_members->{$member->Name} = $member;
         }
     } elsif (not $args{import}) {
         $self->_debug("No group in RT, would create with members:");
@@ -743,13 +743,7 @@ sub add_group_members {
         $self->_debug("\t$username\tin RT, not in LDAP, removing");
         next unless $args{import};
 
-        my $rt_user = RT::User->new($RT::SystemUser);
-        my ($res,$msg) = $rt_user->Load( $username );
-        unless ($res) {
-            $self->_warn("Unable to load $username: $msg");
-            next;
-        }
-        ($res,$msg) = $group->DeleteMember($rt_user->PrincipalObj->Id);
+        my ($res,$msg) = $group->DeleteMember($rt_group_members->{$username}->PrincipalObj->Id);
         unless ($res) {
             $self->_warn("Failed to remove $username to $groupname: $msg");
         }
