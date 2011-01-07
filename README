@@ -55,6 +55,9 @@ which will be concatenated together with a space
 The LDAP attribute can also be a subroutine reference
 that returns either an arrayref or a list of attributes
 
+By default users are created as Unprivileged, but you can change this by
+setting $LDAPCreatePrivileged to 1.
+
 For more information on these see the import_users documentation
 in RT::Extension::LDAPImport
 

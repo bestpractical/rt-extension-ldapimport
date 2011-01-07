@@ -40,6 +40,7 @@ RT->Config->Set('LDAPMapping',
                     RealName     => 'cn'});
 RT->Config->Set('LDAPBase','ou=foo,dc=bestpractical,dc=com');
 RT->Config->Set('LDAPFilter','(objectClass=User)');
+RT->Config->Set('LDAPCreatePrivileged', 1);
 
 $importer->screendebug(1) if ($ENV{TEST_VERBOSE});
 
@@ -61,7 +62,7 @@ for my $entry (@ldap_entries) {
                        Realname => $entry->{cn},
                        Name => $entry->{uid} );
     ok($user->Id, "Found $entry->{cn} as ".$user->Id);
-    ok(!$user->Privileged, "User created as Unprivileged");
+    ok($user->Privileged, "User created as Privileged");
 }
 
 # can't unbind earlier or the server will die

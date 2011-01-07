@@ -145,6 +145,9 @@ If it is a scalar, the value will be looked up in LDAP.
 If it is an arrayref, the values will be concatenated 
 together with a single space.
 
+By default users are created as Unprivileged, but you can change this by
+setting $LDAPCreatePrivileged to 1.
+
 =cut
 
 sub import_users {
@@ -358,7 +361,7 @@ sub create_rt_user {
             return;
         } else {
             if ($args{import}) {
-                my ($val, $msg) = $user_obj->Create( %$user, Privileged => 0 );
+                my ($val, $msg) = $user_obj->Create( %$user, Privileged => $RT::LDAPCreatePrivileged ? 1 : 0 );
 
                 unless ($val) {
                     $self->_error("couldn't create user_obj for $user->{Name}: $msg");
