@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use lib 't/lib';
-use RT::Extension::LDAPImport::Test tests => 8 + 13*2;
+use RT::Extension::LDAPImport::Test tests => 8 + 13*2 + 3;
 eval { require Net::LDAP::Server::Test; 1; } or do {
     plan skip_all => 'Unable to test without Net::Server::LDAP::Test';
 };
@@ -31,6 +31,15 @@ for ( 1 .. 13 ) {
     push @ldap_entries, $entry;
     $ldap->add( $dn, attr => [%$entry] );
 }
+$ldap->add(
+    "uid=42,ou=foo,dc=bestpractical,dc=com",
+    attr => [
+        cn   => "Numeric user",
+        mail => "numeric\@invalid.tld",
+        uid  => 42,
+        objectclass => 'User',
+    ],
+);
 
 
 RT->Config->Set('LDAPHost',"ldap://localhost:$ldap_port");
@@ -63,6 +72,15 @@ for my $entry (@ldap_entries) {
     ok($user->Id, "Found $entry->{cn} as ".$user->Id);
     ok(!$user->Privileged, "User created as Unprivileged");
 }
+
+# Check that we skipped numeric usernames
+my $user = RT::User->new($RT::SystemUser);
+$user->LoadByCols( EmailAddress => "numeric\@invalid.tld" );
+ok(!$user->Id);
+$user->LoadByCols( Name => 42 );
+ok(!$user->Id);
+$user->Load( 42 );
+ok(!$user->Id);
 
 # can't unbind earlier or the server will die
 $ldap->unbind;

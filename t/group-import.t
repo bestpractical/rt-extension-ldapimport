@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use lib 't/lib';
-use RT::Extension::LDAPImport::Test tests => 41;
+use RT::Extension::LDAPImport::Test tests => 43;
 eval { require Net::LDAP::Server::Test; 1; } or do {
     plan skip_all => 'Unable to test without Net::Server::LDAP::Test';
 };
@@ -45,6 +45,14 @@ for ( 1 .. 4 ) {
     $ldap->add( $dn, attr => [%$entry] );
     push @ldap_group_entries, $entry;
 }
+$ldap->add(
+    "cn=42,ou=groups,dc=bestpractical,dc=com",
+    attr => [
+        cn => "42",
+        members => [ "uid=testuser1,ou=foo,dc=bestpractical,dc=com" ],
+        objectClass => 'Group',
+    ],
+);
 
 RT->Config->Set('LDAPHost',"ldap://localhost:$ldap_port");
 RT->Config->Set('LDAPMapping',
@@ -108,3 +116,13 @@ for my $entry (@ldap_group_entries) {
     }
     is(keys %$idlist,0,"No dangling users");
 }
+
+my $group = RT::Group->new($RT::SystemUser);
+$group->LoadUserDefinedGroup( "42" );
+ok( !$group->Id );
+
+$group->LoadByCols(
+    Domain => 'UserDefined',
+    Name   => "42",
+);
+ok( !$group->Id );

@@ -174,6 +174,10 @@ sub import_users {
             $self->_warn("No Name or Emailaddress for user, skipping ".Dumper $user);
             next;
         }
+        if ( $user->{Name} =~ /^[0-9]+$/) {
+            $self->_warn("Skipping user '$user->{Name}', as it is numeric");
+            next;
+        }
         $self->_import_user( user => $user, ldap_entry => $entry, import => $args{import} );
         $done++;
         $self->_debug("Imported $done/$count users");
@@ -560,6 +564,10 @@ sub import_groups {
         $group->{Description} ||= 'Imported from LDAP';
         unless ( $group->{Name} ) {
             $self->_warn("No Name for group, skipping ".Dumper $group);
+            next;
+        }
+        if ( $group->{Name} =~ /^[0-9]+$/) {
+            $self->_warn("Skipping group '$group->{Name}', as it is numeric");
             next;
         }
         $self->_import_group( %args, group => $group, ldap_entry => $entry );
