@@ -1,6 +1,6 @@
 package RT::Extension::LDAPImport;
 
-our $VERSION = '0.31_03';
+our $VERSION = '0.31';
 
 use warnings;
 use strict;

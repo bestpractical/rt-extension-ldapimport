@@ -16,13 +16,14 @@ inc/Module/Install/WriteAll.pm
 INSTALL.SKIP
 lib/RT/Extension/LDAPImport.pm
 Makefile.PL
-MANIFEST
+MANIFEST			This list of files
 MANIFEST.SKIP
-META.yml			# Will be created by "make dist"
+META.yml
 README
 t/00.load.t
 t/group-import.t
 t/lib/RT/Extension/LDAPImport/Test.pm.in
 t/pod-coverage.t
 t/pod.t
+t/user-import-privileged.t
 t/user-import.t

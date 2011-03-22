@@ -1,4 +1,10 @@
 Revision history for RT-Extension-LDAPImport
+0.31
+    Further upgrades to MIRTx for RT4 compat
+    Warn and skip numeric users and groups
+    Add an $LDAPCreatePrivileged flag to create imported users as Privileged
+    Add an optimization for adding new groups; if we just created it, we know it is empty, so skip the member query
+
 0.31_03
     Upgrade Module::Install::RTx so it can find RT.pm
     and version check properly.

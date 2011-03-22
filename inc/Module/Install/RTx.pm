@@ -228,4 +228,4 @@ sub requires_rt {
 
 __END__
 
-#line 342
+#line 348
