@@ -146,8 +146,10 @@ If it is an arrayref, the values will be concatenated
 together with a single space.
 
 By default users are created as Unprivileged, but you can change this by
-setting $LDAPCreatePrivileged to 1.  If the privilege status for users is
-required to be updated then also set $LDAPUpdateSetsPrivileged to 1.
+setting $LDAPCreatePrivileged to 1.
+
+RT will make existing RT users found in LDAP Privileged if you set
+$LDAPUpdateSetsPrivileged to 1.
 
 =cut
 
