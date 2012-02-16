@@ -1,4 +1,9 @@
 Revision history for RT-Extension-LDAPImport
+
+0.32_01
+    Clarify $LDAPGroupName option
+    Support for group membership attributes which don't contain a list of user DNs
+
 0.31
     Further upgrades to MIRTx for RT4 compat
     Warn and skip numeric users and groups
