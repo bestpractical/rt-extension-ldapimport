@@ -8,6 +8,7 @@ use base qw(Class::Accessor);
 __PACKAGE__->mk_accessors(qw(_ldap _group screendebug _users));
 use Carp;
 use Net::LDAP;
+use Net::LDAP::Util qw(escape_filter_value);
 use Data::Dumper;
 
 =head1 NAME
@@ -168,8 +169,7 @@ sub import_users {
 
     my $done = 0; my $count = $results->count;
     while (my $entry = $results->shift_entry) {
-        my $user = $self->_build_object( ldap_entry => $entry, skip => qr/(?i)^CF\./, mapping => $mapping );
-        $user->{Name} ||= $user->{EmailAddress};
+        my $user = $self->_build_user_object( ldap_entry => $entry );
         unless ( $user->{Name} ) {
             $self->_warn("No Name or Emailaddress for user, skipping ".Dumper $user);
             next;
@@ -196,7 +196,7 @@ sub _import_user {
     my %args = @_;
 
     $self->_debug("Processing user $args{user}{Name}");
-    $self->_users->{lc $args{ldap_entry}->dn} = $args{user}{Name};
+    $self->_cache_user( %args );
 
     $args{user} = $self->create_rt_user( %args );
     return unless $args{user};
@@ -205,6 +205,38 @@ sub _import_user {
     $self->add_custom_field_value( %args );
 
     return 1;
+}
+
+=head2 _cache_user ldap_entry => Net::LDAP::Entry, [user => { ... }]
+
+Adds the user to a global cache which is used when importing groups later.
+
+Optionally takes a second argument which is a user data object returned by
+_build_user_object.  If not given, _cache_user will call _build_user_object
+itself.
+
+Returns the user Name.
+
+=cut
+
+sub _cache_user {
+    my $self = shift;
+    my %args = (@_);
+    my $user = $args{user} || $self->_build_user_object( ldap_entry => $args{ldap_entry} );
+
+    my $group_map       = $RT::LDAPGroupMapping           || {};
+    my $member_attr_val = $group_map->{Member_Attr_Value} || 'dn';
+    my $membership_key  = lc $member_attr_val eq 'dn'
+                            ? $args{ldap_entry}->dn
+                            : $args{ldap_entry}->get_value($member_attr_val);
+
+    # Fallback to the DN if the user record doesn't have a value
+    unless (defined $membership_key) {
+        $membership_key = $args{ldap_entry}->dn;
+        $self->_warn("User attribute '$member_attr_val' has no value for '$membership_key'; falling back to DN");
+    }
+
+    return $self->_users->{lc $membership_key} = $user->{Name};
 }
 
 sub _show_user_info {
@@ -253,10 +285,28 @@ sub _check_ldap_mapping {
     return 1;
 }
 
+=head2 _build_user_object
+
+Utility method which wraps _build_object to provide sane defaults for building
+users.  It also tries to ensure a Name exists in the returned object.
+
+=cut
+
+sub _build_user_object {
+    my $self = shift;
+    my $user = $self->_build_object(
+        skip    => qr/(?i)^CF\./,
+        mapping => $RT::LDAPMapping,
+        @_
+    );
+    $user->{Name} ||= $user->{EmailAddress};
+    return $user;
+}
+
 =head2 _build_object
 
 Builds up data from LDAP for importing
-Returns a hash of user data ready for RT::User::Create
+Returns a hash of user or group data ready for RT::User::Create or RT::Group::Create
 
 =cut
 
@@ -680,7 +730,7 @@ sub create_rt_group {
 
 =head3 add_group_members
 
-Iterate over the list of DNs in the Member_Attr LDAP entry.
+Iterate over the list of values in the Member_Attr LDAP entry.
 Look up the appropriate username from LDAP.
 Add those users to the group.
 Remove members of the RT Group who are no longer members
@@ -721,8 +771,9 @@ sub add_group_members {
             next unless $username = $users->{lc $member};
         } else {
             my $ldap_users = $self->_run_search(
-                base   => $member,
-                filter => $RT::LDAPFilter,
+                base   => $RT::LDAPBase,
+                filter => "(&$RT::LDAPFilter($RT::LDAPGroupMapping->{Member_Attr_Value}="
+                            . escape_filter_value($member) . "))"
             );
             unless ( $ldap_users && $ldap_users->count ) {
                 $users->{lc $member} = undef;
@@ -730,7 +781,7 @@ sub add_group_members {
                 next;
             }
             my $ldap_user = $ldap_users->shift_entry;
-            $users->{lc $member} = $username = $ldap_user->get_value($RT::LDAPMapping->{Name});
+            $username = $self->_cache_user( ldap_entry => $ldap_user );
         }
         if ( delete $rt_group_members{$username} ) {
             $self->_debug("\t$username\tin RT and LDAP");
