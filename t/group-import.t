@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use lib 't/lib';
-use RT::Extension::LDAPImport::Test tests => 43;
+use RT::Extension::LDAPImport::Test tests => 66;
 eval { require Net::LDAP::Server::Test; 1; } or do {
     plan skip_all => 'Unable to test without Net::Server::LDAP::Test';
 };
@@ -40,6 +40,7 @@ for ( 1 .. 4 ) {
     my $entry = {
         cn   =>  $groupname,
         members => [ map { $_->{dn} } @ldap_user_entries[($_-1),($_+3),($_+7)] ],
+        memberUid => [ map { $_->{uid} } @ldap_user_entries[($_+1),($_+3),($_+5)] ],
         objectClass => 'Group',
     };
     $ldap->add( $dn, attr => [%$entry] );
@@ -89,40 +90,55 @@ ok( $importer->import_groups() );
     is($groups->Count,0);
 }
 
-ok( $importer->import_groups( import => 1 ) );
-for my $entry (@ldap_group_entries) {
-    my $group = RT::Group->new($RT::SystemUser);
-    $group->LoadUserDefinedGroup( $entry->{cn} );
-    ok($group->Id, "Found $entry->{cn} as ".$group->Id);
+import_group_members_ok( members => 'dn' );
 
-    my $idlist;
-    my $members = $group->MembersObj;
-    while (my $group_member = $members->Next) {
-        my $member = $group_member->MemberObj;
-        next unless $member->IsUser();
-        $idlist->{$member->Object->Id}++;
-    }
+RT->Config->Set('LDAPGroupMapping',
+                   {Name                => 'cn',
+                    Member_Attr         => 'memberUid',
+                    Member_Attr_Value   => 'uid',
+                   });
+import_group_members_ok( memberUid => 'uid' );
 
-    foreach my $dn ( @{$entry->{members}} ) {
-        my ($user) = grep { $_->{dn} eq $dn } @ldap_user_entries;
-        my $rt_user = RT::User->new($RT::SystemUser);
-        my ($res,$msg) = $rt_user->Load($user->{uid});
-        unless ($res) {
-            diag("Couldn't load user $user->{uid}: $msg");
-            next;
+sub import_group_members_ok {
+    my $attr = shift;
+    my $user_attr = shift;
+
+    ok( $importer->import_groups( import => 1 ), "imported groups" );
+
+    for my $entry (@ldap_group_entries) {
+        my $group = RT::Group->new($RT::SystemUser);
+        $group->LoadUserDefinedGroup( $entry->{cn} );
+        ok($group->Id, "Found $entry->{cn} as ".$group->Id);
+
+        my $idlist;
+        my $members = $group->MembersObj;
+        while (my $group_member = $members->Next) {
+            my $member = $group_member->MemberObj;
+            next unless $member->IsUser();
+            $idlist->{$member->Object->Id}++;
         }
-        ok($group->HasMember($rt_user->PrincipalObj->Id),"Correctly assigned $user->{uid} to $entry->{cn}");
-        delete $idlist->{$rt_user->Id};
+
+        foreach my $member ( @{$entry->{$attr}} ) {
+            my ($user) = grep { $_->{$user_attr} eq $member } @ldap_user_entries;
+            my $rt_user = RT::User->new($RT::SystemUser);
+            my ($res,$msg) = $rt_user->Load($user->{uid});
+            unless ($res) {
+                diag("Couldn't load user $user->{uid}: $msg");
+                next;
+            }
+            ok($group->HasMember($rt_user->PrincipalObj->Id),"Correctly assigned $user->{uid} to $entry->{cn}");
+            delete $idlist->{$rt_user->Id};
+        }
+        is(keys %$idlist,0,"No dangling users");
     }
-    is(keys %$idlist,0,"No dangling users");
+
+    my $group = RT::Group->new($RT::SystemUser);
+    $group->LoadUserDefinedGroup( "42" );
+    ok( !$group->Id );
+
+    $group->LoadByCols(
+        Domain => 'UserDefined',
+        Name   => "42",
+    );
+    ok( !$group->Id );
 }
-
-my $group = RT::Group->new($RT::SystemUser);
-$group->LoadUserDefinedGroup( "42" );
-ok( !$group->Id );
-
-$group->LoadByCols(
-    Domain => 'UserDefined',
-    Name   => "42",
-);
-ok( !$group->Id );
