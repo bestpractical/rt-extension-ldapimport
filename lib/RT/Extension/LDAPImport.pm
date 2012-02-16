@@ -5,7 +5,7 @@ our $VERSION = '0.31';
 use warnings;
 use strict;
 use base qw(Class::Accessor);
-__PACKAGE__->mk_accessors(qw(_ldap _group screendebug _dnlist));
+__PACKAGE__->mk_accessors(qw(_ldap _group screendebug _users));
 use Carp;
 use Net::LDAP;
 use Data::Dumper;
@@ -164,7 +164,7 @@ sub import_users {
     my $mapping = $RT::LDAPMapping;
     return unless $self->_check_ldap_mapping( mapping => $mapping );
 
-    $self->_dnlist({});
+    $self->_users({});
 
     my $done = 0; my $count = $results->count;
     while (my $entry = $results->shift_entry) {
@@ -196,7 +196,7 @@ sub _import_user {
     my %args = @_;
 
     $self->_debug("Processing user $args{user}{Name}");
-    $self->_dnlist->{lc $args{ldap_entry}->dn} = $args{user}{Name};
+    $self->_users->{lc $args{ldap_entry}->dn} = $args{user}{Name};
 
     $args{user} = $self->create_rt_user( %args );
     return unless $args{user};
@@ -714,23 +714,23 @@ sub add_group_members {
         $self->_debug("No group in RT, would create with members:");
     }
 
-    my $dnlist = $self->_dnlist;
+    my $users = $self->_users;
     foreach my $member (@$members) {
         my $username;
-        if (exists $dnlist->{lc $member}) {
-            next unless $username = $dnlist->{lc $member};
+        if (exists $users->{lc $member}) {
+            next unless $username = $users->{lc $member};
         } else {
             my $ldap_users = $self->_run_search(
                 base   => $member,
                 filter => $RT::LDAPFilter,
             );
             unless ( $ldap_users && $ldap_users->count ) {
-                $dnlist->{lc $member} = undef;
+                $users->{lc $member} = undef;
                 $self->_error("No user found for $member who should be a member of $groupname");
                 next;
             }
             my $ldap_user = $ldap_users->shift_entry;
-            $dnlist->{lc $member} = $username = $ldap_user->get_value($RT::LDAPMapping->{Name});
+            $users->{lc $member} = $username = $ldap_user->get_value($RT::LDAPMapping->{Name});
         }
         if ( delete $rt_group_members{$username} ) {
             $self->_debug("\t$username\tin RT and LDAP");
