@@ -1,4 +1,5 @@
 #!/usr/bin/env perl
+### before: #!@PERL@
 
 use strict;
 use warnings;
