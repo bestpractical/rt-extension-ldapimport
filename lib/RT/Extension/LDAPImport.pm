@@ -10,6 +10,8 @@ __PACKAGE__->mk_accessors(qw(_ldap _group screendebug _users));
 use Carp;
 use Net::LDAP;
 use Net::LDAP::Util qw(escape_filter_value);
+use Net::LDAP::Control::Paged;
+use Net::LDAP::Constant qw(LDAP_CONTROL_PAGED);
 use Data::Dumper;
 
 =head1 NAME
@@ -90,6 +92,9 @@ Executes a search using the provided base and filter
 
 Will connect to LDAP server using connect_ldap
 
+Returns an array of L<Net::LDAP::Entry> objects, possibly consolidated from
+multiple LDAP pages.
+
 =cut
 
 sub _run_search {
@@ -102,19 +107,57 @@ sub _run_search {
         return;
     }
 
-    $self->_debug("searching with base => '$args{base}' filter => '$args{filter}'");
+    my %search = (
+        base    => $args{base},
+        filter  => $args{filter},
+    );
+    my (@results, $page, $cookie);
 
-    my $result = $ldap->search( base => $args{base},
-                                filter => $args{filter} );
-
-    if ($result->code) {
-        $self->_error("LDAP search failed " . $result->error);
-        return;
+    if ($RT::LDAPSizeLimit) {
+        $page = Net::LDAP::Control::Paged->new( size => $RT::LDAPSizeLimit, critical => 1 );
+        $search{control} = $page;
     }
 
-    $self->_debug("search found ".$result->count." objects");
-    return $result;
+    LOOP: {
+        # Start where we left off
+        $page->cookie($cookie) if $page and $cookie;
 
+        $self->_debug("searching with: " . join(' ', map { "$_ => '$search{$_}'" } sort keys %search));
+
+        my $result = $ldap->search( %search );
+
+        if ($result->code) {
+            $self->_error("LDAP search failed " . $result->error);
+            last;
+        }
+
+        push @results, $result->entries;
+
+        # Short circuit early if we're done
+        last if not $result->count
+             or $result->count < ($RT::LDAPSizeLimit || 0);
+
+        if ($page) {
+            if (my $control = $result->control( LDAP_CONTROL_PAGED )) {
+                $cookie = $control->cookie;
+            } else {
+                $self->_error("LDAP search didn't return a paging control");
+                last;
+            }
+        }
+        redo if $cookie;
+    }
+
+    # Let the server know we're abandoning the search if we errored out
+    if ($cookie) {
+        $self->_debug("Informing the LDAP server we're done with the result set");
+        $page->cookie($cookie);
+        $page->size(0);
+        $ldap->search( %search );
+    }
+
+    $self->_debug("search found ".scalar @results." objects");
+    return @results;
 }
 
 =head2 import_users import => 1|0
@@ -156,8 +199,8 @@ sub import_users {
     my $self = shift;
     my %args = @_;
 
-    my $results = $self->run_user_search;
-    unless ( $results && $results->count ) {
+    my @results = $self->run_user_search;
+    unless ( @results ) {
         $self->_debug("No results found, no import");
         $self->disconnect_ldap;
         return;
@@ -168,8 +211,8 @@ sub import_users {
 
     $self->_users({});
 
-    my $done = 0; my $count = $results->count;
-    while (my $entry = $results->shift_entry) {
+    my $done = 0; my $count = scalar @results;
+    while (my $entry = shift @results) {
         my $user = $self->_build_user_object( ldap_entry => $entry );
         unless ( $user->{Name} ) {
             $self->_warn("No Name or Emailaddress for user, skipping ".Dumper $user);
@@ -599,8 +642,8 @@ sub import_groups {
     my $self = shift;
     my %args = @_;
 
-    my $results = $self->run_group_search;
-    unless ( $results && $results->count ) {
+    my @results = $self->run_group_search;
+    unless ( @results ) {
         $self->_debug("No results found, no group import");
         $self->disconnect_ldap;
         return;
@@ -609,8 +652,8 @@ sub import_groups {
     my $mapping = $RT::LDAPGroupMapping;
     return unless $self->_check_ldap_mapping( mapping => $mapping );
 
-    my $done = 0; my $count = $results->count;
-    while (my $entry = $results->shift_entry) {
+    my $done = 0; my $count = scalar @results;
+    while (my $entry = shift @results) {
         my $group = $self->_build_object( ldap_entry => $entry, skip => qr/(?i)^Member_Attr/, mapping => $mapping );
         $group->{Description} ||= 'Imported from LDAP';
         unless ( $group->{Name} ) {
@@ -771,17 +814,17 @@ sub add_group_members {
         if (exists $users->{lc $member}) {
             next unless $username = $users->{lc $member};
         } else {
-            my $ldap_users = $self->_run_search(
+            my @results = $self->_run_search(
                 base   => $RT::LDAPBase,
                 filter => "(&$RT::LDAPFilter($RT::LDAPGroupMapping->{Member_Attr_Value}="
                             . escape_filter_value($member) . "))"
             );
-            unless ( $ldap_users && $ldap_users->count ) {
+            unless ( @results ) {
                 $users->{lc $member} = undef;
                 $self->_error("No user found for $member who should be a member of $groupname");
                 next;
             }
-            my $ldap_user = $ldap_users->shift_entry;
+            my $ldap_user = shift @results;
             $username = $self->_cache_user( ldap_entry => $ldap_user );
         }
         if ( delete $rt_group_members{$username} ) {

@@ -106,6 +106,10 @@ member.
 If you do not specify a Description attribute, it will be filled with
 'Imported from LDAP'
 
+Your LDAP server may have result size limits.  If it does, you should set
+$LDAPSizeLimit appropriately:
+ Set($LDAPSizeLimit, 1000);
+
 RUNNING THE IMPORT
 
 If RT is not installed in /opt/rt3, you will need to change the 
