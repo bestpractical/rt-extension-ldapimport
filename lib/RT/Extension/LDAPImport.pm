@@ -253,7 +253,7 @@ sub _show_user_info {
         my $old_value;
         if ($rt_user) {
             eval { $old_value = $rt_user->$key() };
-            if ($user->{$key} && $old_value eq $user->{$key}) {
+            if ($user->{$key} && defined $old_value && $old_value eq $user->{$key}) {
                 $old_value = 'unchanged';
             }
         }
@@ -862,7 +862,7 @@ sub _show_group_info {
         my $old_value;
         if ($rt_group) {
             eval { $old_value = $rt_group->$key() };
-            if ($group->{$key} && $old_value eq $group->{$key}) {
+            if ($group->{$key} && defined $old_value && $old_value eq $group->{$key}) {
                 $old_value = 'unchanged';
             }
         }
