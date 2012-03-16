@@ -4,6 +4,8 @@
 use strict;
 use warnings;
 
+$|++;
+
 BEGIN {
 ### after:     use lib qw(@RT_LIB_PATH@);
 use lib '/opt/rt3/local/lib /opt/rt3/lib';
