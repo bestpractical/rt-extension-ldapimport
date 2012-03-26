@@ -1,5 +1,13 @@
 Revision history for RT-Extension-LDAPImport
 
+0.32_03
+    Flush output immediately
+    Disable RT::Authen::ExternalAuth to avoid double info fetching
+
+0.32_02
+    Support for paging results from your LDAP source
+    Use the same perl that ran Makefile.PL in the shebang of bin/rtldapimport
+
 0.32_01
     Clarify $LDAPGroupName option
     Support for group membership attributes which don't contain a list of user DNs
