@@ -18,11 +18,6 @@ use Data::Dumper;
 
 RT::Extension::LDAPImport - Import Users from an LDAP store
 
-
-=head1 SYNOPSIS
-
-    use RT::Extension::LDAPImport;
-
 =head1 METHODS
 
 =head2 connect_ldap
@@ -865,6 +860,13 @@ sub _get_group_members_from_ldap {
     my $mapping = $RT::LDAPGroupMapping;
 
     my $members = $ldap_entry->get_value($mapping->{Member_Attr}, asref => 1);
+
+    if ( exists $mapping->{Member_Attr_Regex}
+	 and defined $mapping->{Member_Attr_Regex} ) {
+      @{$members} = map{ /$mapping->{Member_Attr_Regex}/ } @{$members};
+    }
+
+    return $members;
 }
 
 
