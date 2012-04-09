@@ -18,6 +18,10 @@ use Data::Dumper;
 
 RT::Extension::LDAPImport - Import Users from an LDAP store
 
+=head1 SYNOPSIS
+
+    use RT::Extension::LDAPImport;
+
 =head1 CONFIGURATION
 
 If the LDAP group field you are mapping to doesn't have a
