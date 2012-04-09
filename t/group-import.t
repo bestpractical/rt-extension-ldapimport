@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use lib 't/lib';
-use RT::Extension::LDAPImport::Test tests => 74;
+use RT::Extension::LDAPImport::Test tests => 66;
 eval { require Net::LDAP::Server::Test; 1; } or do {
     plan skip_all => 'Unable to test without Net::Server::LDAP::Test';
 };
@@ -97,39 +97,6 @@ RT->Config->Set('LDAPGroupMapping',
                     Member_Attr         => 'memberUid',
                     Member_Attr_Value   => 'uid',
                    });
-import_group_members_ok( memberUid => 'uid' );
-
-# Test a regex on Member_Attr
-# This is for a case where the member attribute
-# isn't the simple member name.
-
-@ldap_group_entries = ();
-{
-    my $groupname = "Test Group 5";
-    my $dn = "cn=$groupname,ou=groups,dc=bestpractical,dc=com";
-    my $entry = {
-        cn   =>  $groupname,
-        members => [ map { $_->{dn} } @ldap_user_entries[3,7,11] ],
-       # Make an entries that looks like cn=testuser12,ou=foo,dc=bestpractical
-        memberUid => [ map { 'cn=' . $_->{uid} . ',ou=foo,dc=bestpractical' }
-		       @ldap_user_entries[3,7,11] ],
-        objectClass => 'Test5',
-    };
-    $ldap->add( $dn, attr => [%$entry] );
-
-    # Fix entry for expected value after regex.
-    $entry->{memberUid} = [ map { $_->{uid} } @ldap_user_entries[3,7,11] ];
-    push @ldap_group_entries, $entry;
-}
-
-RT->Config->Set('LDAPGroupFilter','(objectClass=Test5)');
-RT->Config->Set('LDAPGroupMapping',
-                   {Name                => 'cn',
-                    Member_Attr         => 'memberUid',
-                    Member_Attr_Value   => 'uid',
-		    Member_Attr_Regex   => qr/^cn=(\w+)\,/,
-                   });
-
 import_group_members_ok( memberUid => 'uid' );
 
 sub import_group_members_ok {

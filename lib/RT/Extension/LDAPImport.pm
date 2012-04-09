@@ -18,26 +18,10 @@ use Data::Dumper;
 
 RT::Extension::LDAPImport - Import Users from an LDAP store
 
+
 =head1 SYNOPSIS
 
     use RT::Extension::LDAPImport;
-
-=head1 CONFIGURATION
-
-If the LDAP group field you are mapping to doesn't have a
-simple username, you provide a regex to pull the name out
-with Member_Attr_Regex. The capture value in the regex will be
-used to find the username.
-
-    Set($LDAPGroupMapping, {Name               => 'cn',
-                            Member_Attr        => 'member',
-                            Member_Attr_Value  => 'dn'
-                            Member_Attr_Regex   => qr/^cn=(\w+)\,/,
-                           });
-
-The above would pull the name out of an entry something like
-
-    cn=somename,ou=company
 
 =head1 METHODS
 
@@ -881,13 +865,6 @@ sub _get_group_members_from_ldap {
     my $mapping = $RT::LDAPGroupMapping;
 
     my $members = $ldap_entry->get_value($mapping->{Member_Attr}, asref => 1);
-
-    if ( exists $mapping->{Member_Attr_Regex}
-	 and defined $mapping->{Member_Attr_Regex} ) {
-      @{$members} = map{ /$mapping->{Member_Attr_Regex}/ } @{$members};
-    }
-
-    return $members;
 }
 
 
