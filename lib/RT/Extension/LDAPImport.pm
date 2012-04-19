@@ -20,10 +20,10 @@ RT::Extension::LDAPImport - Import Users from an LDAP store
 
 =head1 SYNOPSIS
 
-    # In RT_SiteConfig.pm
+In C<RT_SiteConfig.pm>:
 
     Set($LDAPHost,'my.ldap.host')
-    Set($LDAPUSER,'me');
+    Set($LDAPUser,'me');
     Set($LDAPPassword,'mypass');
     Set($LDAPFilter, '(&(cn = users))');
     Set($LDAPMapping, {Name         => 'uid', # required
@@ -31,22 +31,24 @@ RT::Extension::LDAPImport - Import Users from an LDAP store
                        RealName     => 'cn',
                        WorkPhone    => 'telephoneNumber',
                        Organization => 'departmentName'});
-
+    
     # Add to any existing plugins
     Set(@Plugins, qw(RT::Extension::LDAPImport));
-
+    
     # If you want to sync Groups RT <-> LDAP
-
+    
     Set($LDAPGroupBase, 'ou=Groups,o=Our Place');
     Set($LDAPGroupFilter, '(&(cn = Groups))');
     Set($LDAPGroupMapping, {Name               => 'cn',
                             Member_Attr        => 'member',
                             Member_Attr_Value  => 'dn' });
 
+Running the import:
+
     # Run a test import
     /opt/rt4/local/plugins/RT-Extension-LDAPImport/bin/rtldapimport \
     --debug > ldapimport.debug 2>&1
-
+    
     # Run for real, possibly put in cron
     /opt/rt4/local/plugins/RT-Extension-LDAPImport/bin/rtldapimport \
     --import
