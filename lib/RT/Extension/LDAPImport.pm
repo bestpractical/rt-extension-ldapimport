@@ -102,6 +102,20 @@ which will be concatenated together with a space.
 The LDAP attribute can also be a subroutine reference
 that returns either an arrayref or a list of attributes.
 
+The keys in the mapping (i.e. the RT fields, the left hand side) may be a user
+custom field name prefixed with C<UserCF.>, for example C<< 'UserCF.Employee
+Number' => 'employeeId' >>.  Note that this only B<adds> values at the moment,
+which on single value CFs will remove any old value first.  Multiple value CFs
+may behave not quite how you expect.  If the attribute no longer exists on a
+user in LDAP, it will be cleared on the RT side as well.
+
+You may also prefix any RT custom field name with C<CF.> inside your mapping to
+add available values to a Select custom field.  This effectively takes user
+attributes in LDAP and adds the values as selectable options in a CF.  It does
+B<not> set a CF value on any RT object (User, Ticket, Queue, etc).  You might
+use this to populate a ticket Location CF with all the locations of your users
+so that tickets can be associated with the locations in use.
+
 =item C<< Set($LDAPCreatePrivileged, 1); >>
 
 By default users are created as Unprivileged, but you can change this by
@@ -449,6 +463,7 @@ sub _import_user {
 
     $self->add_user_to_group( %args );
     $self->add_custom_field_value( %args );
+    $self->update_object_custom_field_values( %args, object => $args{user} );
 
     return 1;
 }
@@ -542,7 +557,7 @@ exists in the returned object.
 sub _build_user_object {
     my $self = shift;
     my $user = $self->_build_object(
-        skip    => qr/(?i)^CF\./,
+        skip    => qr/(?i)^(?:User)?CF\./,
         mapping => $RT::LDAPMapping,
         @_
     );
@@ -827,6 +842,52 @@ sub add_custom_field_value {
 
 }
 
+=head3 update_object_custom_field_values
+
+Adds CF values to an object (currently only users).  The Custom Field should
+already exist, otherwise this will throw an error and not import any data.
+
+Note that this code only B<adds> values at the moment, which on single value
+CFs will remove any old value first.  Multiple value CFs may behave not quite
+how you expect.
+
+=cut
+
+sub update_object_custom_field_values {
+    my $self = shift;
+    my %args = @_;
+    my $obj  = $args{object};
+
+    foreach my $rtfield ( keys %{$RT::LDAPMapping} ) {
+        # XXX TODO: accept GroupCF when we call this from group_import too
+        next unless $rtfield =~ /^UserCF\.(.+)$/i;
+        my $cf_name = $1;
+        my $ldap_attribute = $RT::LDAPMapping->{$rtfield};
+
+        my @attributes = $self->_parse_ldap_mapping($ldap_attribute);
+        unless (@attributes) {
+            $self->_error("Invalid LDAP mapping for $rtfield ".Dumper($ldap_attribute));
+            next;
+        }
+        my $value = join ' ',
+                    grep { defined and length }
+                     map { scalar $args{ldap_entry}->get_value($_) }
+                         @attributes;
+
+        if (($obj->FirstCustomFieldValue($cf_name) || '') eq ($value || '')) {
+            $self->_debug($obj->Name . ": Value '$value' is already set for '$cf_name'");
+            next;
+        }
+
+        $self->_debug($obj->Name . ": Adding object value '$value' for '$cf_name'");
+        next unless $args{import};
+
+        my ($ok, $msg) = $obj->AddCustomFieldValue( Field => $cf_name, Value => $value );
+        $self->_error($obj->Name . ": Couldn't add value '$value' for '$cf_name': $msg")
+            unless $ok;
+    }
+}
+
 =head2 import_groups import => 1|0
 
 Takes the results of the search from C<run_group_search>
@@ -912,6 +973,7 @@ sub _import_group {
     my ($group_obj, $created) = $self->create_rt_group( %args, group => $group );
     return if $args{import} and not $group_obj;
     $self->add_group_members( %args, name => $group->{Name}, group => $group_obj, ldap_entry => $ldap_entry, new => $created );
+    # XXX TODO: support OCFVs for groups too
     return;
 }
 

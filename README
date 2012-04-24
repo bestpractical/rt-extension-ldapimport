@@ -74,6 +74,22 @@ CONFIGURATION
         The LDAP attribute can also be a subroutine reference that returns
         either an arrayref or a list of attributes.
 
+        The keys in the mapping (i.e. the RT fields, the left hand side) may
+        be a user custom field name prefixed with "UserCF.", for example "
+        'UserCF.Employee Number' =" 'employeeId' >. Note that this only adds
+        values at the moment, which on single value CFs will remove any old
+        value first. Multiple value CFs may behave not quite how you expect.
+        If the attribute no longer exists on a user in LDAP, it will be
+        cleared on the RT side as well.
+
+        You may also prefix any RT custom field name with "CF." inside your
+        mapping to add available values to a Select custom field. This
+        effectively takes user attributes in LDAP and adds the values as
+        selectable options in a CF. It does not set a CF value on any RT
+        object (User, Ticket, Queue, etc). You might use this to populate a
+        ticket Location CF with all the locations of your users so that
+        tickets can be associated with the locations in use.
+
     "Set($LDAPCreatePrivileged, 1);"
         By default users are created as Unprivileged, but you can change
         this by setting $LDAPCreatePrivileged to 1.
@@ -297,6 +313,15 @@ METHODS
     data.
 
     This could probably use some caching.
+
+   update_object_custom_field_values
+    Adds CF values to an object (currently only users). The Custom Field
+    should already exist, otherwise this will throw an error and not import
+    any data.
+
+    Note that this code only adds values at the moment, which on single
+    value CFs will remove any old value first. Multiple value CFs may behave
+    not quite how you expect.
 
   import_groups import => 1|0
     Takes the results of the search from "run_group_search" and maps
