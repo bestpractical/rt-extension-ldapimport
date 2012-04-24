@@ -1,7 +1,7 @@
 package RT::Extension::LDAPImport;
 
 # XXX TODO: For historical reasons, this should become 0.33 after 0.32_xx dev releases are done.
-our $VERSION = '0.32_03';
+our $VERSION = '0.32_04';
 
 use warnings;
 use strict;

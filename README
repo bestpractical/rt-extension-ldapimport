@@ -75,8 +75,8 @@ CONFIGURATION
         either an arrayref or a list of attributes.
 
         The keys in the mapping (i.e. the RT fields, the left hand side) may
-        be a user custom field name prefixed with "UserCF.", for example "
-        'UserCF.Employee Number' =" 'employeeId' >. Note that this only adds
+        be a user custom field name prefixed with "UserCF.", for example
+        "'UserCF.Employee Number' => 'employeeId'". Note that this only adds
         values at the moment, which on single value CFs will remove any old
         value first. Multiple value CFs may behave not quite how you expect.
         If the attribute no longer exists on a user in LDAP, it will be
