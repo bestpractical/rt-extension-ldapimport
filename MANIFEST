@@ -13,6 +13,8 @@ inc/Module/Install/RTx.pm
 inc/Module/Install/Substitute.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
+inc/Module/Install/ReadmeFromPod.pm
+INSTALL
 INSTALL.SKIP
 lib/RT/Extension/LDAPImport.pm
 Makefile.PL
@@ -27,3 +29,4 @@ t/pod-coverage.t
 t/pod.t
 t/user-import-privileged.t
 t/user-import.t
+t/user-import-cfs.t
