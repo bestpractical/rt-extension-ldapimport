@@ -16,3 +16,4 @@ rtldapimport
 *.bak
 t/tmp/
 t/lib/RT/Extension/LDAPImport/Test.pm
+MYMETA.*
