@@ -18,6 +18,7 @@
 \bpm_to_blib\.ts$
 \bpm_to_blib$
 \bblibdirs\.ts$         # 6.18 through 6.25 generated this
+MYMETA\..*$
 
 # Avoid Module::Build generated and utility files.
 \bBuild$
