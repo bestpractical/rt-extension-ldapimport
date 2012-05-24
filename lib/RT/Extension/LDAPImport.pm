@@ -485,6 +485,8 @@ sub _cache_user {
     my %args = (@_);
     my $user = $args{user} || $self->_build_user_object( ldap_entry => $args{ldap_entry} );
 
+    $self->_users({}) if not defined $self->_users;
+
     my $group_map       = $RT::LDAPGroupMapping           || {};
     my $member_attr_val = $group_map->{Member_Attr_Value} || 'dn';
     my $membership_key  = lc $member_attr_val eq 'dn'
