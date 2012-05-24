@@ -1080,10 +1080,14 @@ sub add_group_members {
         if (exists $users->{lc $member}) {
             next unless $username = $users->{lc $member};
         } else {
+            my $attr    = lc($RT::LDAPGroupMapping->{Member_Attr_Value} || 'dn');
+            my $base    = $attr eq 'dn' ? $member : $RT::LDAPBase;
+            my $filter  = $attr eq 'dn'
+                            ? $RT::LDAPFilter
+                            : "(&$RT::LDAPFilter($attr=" . escape_filter_value($member) . "))";
             my @results = $self->_run_search(
-                base   => $RT::LDAPBase,
-                filter => "(&$RT::LDAPFilter($RT::LDAPGroupMapping->{Member_Attr_Value}="
-                            . escape_filter_value($member) . "))"
+                base   => $base,
+                filter => $filter,
             );
             unless ( @results ) {
                 $users->{lc $member} = undef;
