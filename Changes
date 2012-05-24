@@ -1,5 +1,14 @@
 Revision history for RT-Extension-LDAPImport
 
+0.32_05
+    Bug fix: Restore the old uncached group member search logic when Member_Attr_Value is DN
+    Bug fix: Ensure the users cache is defined before we use it
+    Feature: Support skipping users or groups during import
+
+0.32_04
+    Doc: Cleaned up documention into a single place
+    Feature: Sync single value user CFs
+
 0.32_03
     Flush output immediately
     Disable RT::Authen::ExternalAuth to avoid double info fetching
