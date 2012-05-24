@@ -38,3 +38,7 @@ bin/rtldapimport$
 t/lib/RT/Extension/LDAPImport/Test.pm$
 
 t/tmp/
+\.tagstagstags
+MYMETA\.json
+MYMETA\.yml$
+\.tar\.gz$$
