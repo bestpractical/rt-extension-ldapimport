@@ -435,7 +435,7 @@ sub import_users {
             next;
         }
         if ( $user->{Name} =~ /^[0-9]+$/) {
-            $self->_warn("Skipping user '$user->{Name}', as it is numeric");
+            $self->_debug("Skipping user '$user->{Name}', as it is numeric");
             next;
         }
         $self->_import_user( user => $user, ldap_entry => $entry, import => $args{import} );
@@ -934,7 +934,7 @@ sub import_groups {
             next;
         }
         if ( $group->{Name} =~ /^[0-9]+$/) {
-            $self->_warn("Skipping group '$group->{Name}', as it is numeric");
+            $self->_debug("Skipping group '$group->{Name}', as it is numeric");
             next;
         }
         $self->_import_group( %args, group => $group, ldap_entry => $entry );
