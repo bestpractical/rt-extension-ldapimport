@@ -1,5 +1,9 @@
 Revision history for RT-Extension-LDAPImport
 
+0.32_06
+    Bug fix: Allow 0 as a valid object CF value
+    Usability: Lower log level to debug for skipped numeric users/groups
+
 0.32_05
     Bug fix: Restore the old uncached group member search logic when Member_Attr_Value is DN
     Bug fix: Ensure the users cache is defined before we use it
