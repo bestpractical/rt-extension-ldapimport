@@ -34,7 +34,7 @@ ok( my $server = Net::LDAP::Server::Test->new( $ldap_port, auto_schema => 1 ),
 my $ldap = Net::LDAP->new("localhost:$ldap_port");
 $ldap->bind();
 my @ldap_entries;
-for ( 1 .. 13 ) {
+for ( 0 .. 12 ) {
     my $username = "testuser$_";
     my $dn = "uid=$username,ou=foo,dc=bestpractical,dc=com";
     my $entry = { 
@@ -78,7 +78,7 @@ for my $entry (@ldap_entries) {
                        Name => $entry->{uid} );
     ok($user->Id, "Found $entry->{cn} as ".$user->Id);
     ok(!$user->Privileged, "User created as Unprivileged");
-    is($user->FirstCustomFieldValue('Employee Number'), $entry->{employeeId}, "cf is good");
+    is($user->FirstCustomFieldValue('Employee Number'), $entry->{employeeId}, "cf is good: $entry->{employeeId}");
 }
 
 # import again, check that it was cleared
