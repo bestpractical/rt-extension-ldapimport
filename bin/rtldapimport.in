@@ -12,10 +12,15 @@ use lib '/opt/rt3/local/lib /opt/rt3/lib';
 use RT;
 RT::LoadConfig;
 
-# Avoid extra user canonicalization calls by disabling RT::Authen::ExternalAuth
-# while we import users from LDAP
-@RT::Plugins = grep { $_ ne 'RT::Authen::ExternalAuth' }
-                    @RT::Plugins;
+if (RT->can('Config')) {
+    # Avoid extra user canonicalization calls by disabling
+    # RT::Authen::ExternalAuth while we import users from LDAP
+    RT->Config->Set(
+        'Plugins',
+        grep { $_ ne 'RT::Authen::ExternalAuth' }
+             RT->Config->Get('Plugins')
+    );
+}
 
 RT::Init;
 }
