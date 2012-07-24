@@ -1,5 +1,8 @@
 Revision history for RT-Extension-LDAPImport
 
+0.33
+    Bug fix: Actually disable RT::Authen::ExternalAuth while importing users from LDAP
+
 0.32_06
     Bug fix: Allow 0 as a valid object CF value
     Usability: Lower log level to debug for skipped numeric users/groups
