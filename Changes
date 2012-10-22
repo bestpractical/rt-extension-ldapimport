@@ -1,5 +1,10 @@
 Revision history for RT-Extension-LDAPImport
 
+0.33_01
+    Bug fix: Avoid flip flopping fields back and forth with
+    RT::Authen::ExternalAuth by using our own update function instead of
+    RT::Record->Update
+
 0.33
     Bug fix: Actually disable RT::Authen::ExternalAuth while importing users from LDAP
 
