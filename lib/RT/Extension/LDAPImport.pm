@@ -701,6 +701,14 @@ sub create_rt_user {
 
 }
 
+=head2 update_rt_user
+
+Takes a hash with a user object as C<user> and a hashref of updated values as
+C<info>.  Mimics RT::Record's C<Update> method, but without side-effects of
+newline normalization.
+
+=cut
+
 sub update_rt_user {
     my $self = shift;
     my %args = @_;
