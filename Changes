@@ -1,5 +1,13 @@
 Revision history for RT-Extension-LDAPImport
 
+0.34
+    Bug fix: Revert changes in 0.33_01 and _02; RT::Authen::ExternalAuth 0.13
+             is using RT::Record->Update now
+    Tests: Compatibility with Net::LDAP::Server::Test 0.16
+
+0.33_02
+    Documentation for function added in 0.33_01
+
 0.33_01
     Bug fix: Avoid flip flopping fields back and forth with
     RT::Authen::ExternalAuth by using our own update function instead of
