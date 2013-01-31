@@ -18,6 +18,8 @@ ok( my $server = Net::LDAP::Server::Test->new( $ldap_port, auto_schema => 1 ),
 
 my $ldap = Net::LDAP->new("localhost:$ldap_port");
 $ldap->bind();
+$ldap->add("ou=foo,dc=bestpractical,dc=com");
+
 my @ldap_entries;
 for ( 1 .. 13 ) {
     my $username = "testuser$_";

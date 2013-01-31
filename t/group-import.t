@@ -17,6 +17,7 @@ ok( my $server = Net::LDAP::Server::Test->new( $ldap_port, auto_schema => 1 ),
     "spawned test LDAP server on port $ldap_port");
 my $ldap = Net::LDAP->new("localhost:$ldap_port");
 $ldap->bind();
+$ldap->add("dc=bestpractical,dc=com");
 
 my @ldap_user_entries;
 for ( 1 .. 12 ) {
