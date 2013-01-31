@@ -664,7 +664,7 @@ sub create_rt_user {
         if ($RT::LDAPUpdateUsers || $RT::LDAPUpdateOnly) {
             $self->_debug("$message, updating their data");
             if ($args{import}) {
-                my @results = $self->update_rt_user( user => $user_obj, info => $user );
+                my @results = $user_obj->Update( ARGSRef => $user, AttributesRef => [keys %$user] );
                 $self->_debug(join("\n",@results)||'no change');
             } else {
                 $self->_debug("Found existing user $user->{Name} to update");
@@ -699,33 +699,6 @@ sub create_rt_user {
     }
     return $user_obj;
 
-}
-
-=head2 update_rt_user
-
-Takes a hash with a user object as C<user> and a hashref of updated values as
-C<info>.  Mimics RT::Record's C<Update> method, but without side-effects of
-newline normalization.
-
-=cut
-
-sub update_rt_user {
-    my $self = shift;
-    my %args = @_;
-
-    my @results;
-    my $user = $args{'user'};
-    while ( my ($field, $new) = each %{ $args{'info'} } ) {
-        next unless defined $new;
-
-        my $old = $user->$field();
-        next if defined $old && $old eq $new;
-
-        my $method = "Set$field";
-        my ($status, $msg) = $user->$method( $new );
-        push @results, $user->loc('User [_1]: [_2]', $user->Name, $msg);
-    }
-    return @results;
 }
 
 sub _load_rt_user {
