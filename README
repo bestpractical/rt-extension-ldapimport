@@ -139,6 +139,13 @@ CONFIGURATION
         identifier (dn or other LDAP field) on a user record means the user
         will be added to that group in RT.
 
+        "id" is the field in LDAP group record that uniquely identifies the
+        group. This is optional and shouldn't be equal to mapping for Name
+        field. Group names in RT must be distinct and you don't need another
+        unique identifier in common situation. However, when you rename a
+        group in LDAP, without this option set properly you end up with two
+        groups in RT.
+
         You can provide a "Description" key which will be added as the group
         description in RT. The default description is 'Imported from LDAP'.
 

@@ -174,6 +174,13 @@ A match between the member field on the group record and this
 identifier (dn or other LDAP field) on a user record means the
 user will be added to that group in RT.
 
+C<id> is the field in LDAP group record that uniquely identifies
+the group. This is optional and shouldn't be equal to mapping for
+Name field. Group names in RT must be distinct and you don't need
+another unique identifier in common situation. However, when you
+rename a group in LDAP, without this option set properly you end
+up with two groups in RT.
+
 You can provide a C<Description> key which will be added as the group
 description in RT. The default description is 'Imported from LDAP'.
 
@@ -1004,8 +1011,10 @@ sub create_rt_group {
     my %args = @_;
     my $group = $args{group};
 
-    my $group_obj = RT::Group->new($RT::SystemUser);
-    $group_obj->LoadUserDefinedGroup( $group->{Name} );
+    my $group_obj = $self->find_rt_group(%args);
+    return unless defined $group_obj;
+
+    my $id = delete $group->{'id'};
 
     my $created;
     if ($group_obj->Id) {
@@ -1031,6 +1040,15 @@ sub create_rt_group {
             }
             $created = $val;
             $self->_debug("Created group for $group->{Name} with id ".$group_obj->Id);
+
+            if ( $id ) {
+                my ($val, $msg) = $group_obj->SetAttribute( Name => 'LDAPImport-gid-'.$id, Content => 1 );
+                unless ($val) {
+                    $self->_error("couldn't set attribute: $msg");
+                    return;
+                }
+            }
+
         } else {
             print "Found new group $group->{Name} to create in RT\n";
             $self->_show_group_info( %args );
@@ -1044,6 +1062,88 @@ sub create_rt_group {
     return ($group_obj, $created);
 
 }
+
+sub find_rt_group {
+    my $self = shift;
+    my %args = @_;
+    my $group = $args{group};
+
+    my $group_obj = RT::Group->new($RT::SystemUser);
+    $group_obj->LoadUserDefinedGroup( $group->{Name} );
+    return $group_obj unless $group->{'id'};
+
+    unless ( $group_obj->id ) {
+        $self->_debug("No group in RT named $group->{Name}. Looking by $group->{id} LDAP id.");
+        $group_obj = $self->find_rt_group_by_ldap_id( $group->{'id'} );
+        unless ( $group_obj ) {
+            $self->_debug("No group in RT with LDAP id $group->{id}. Creating a new one.");
+            return RT::Group->new($RT::SystemUser);
+        }
+
+        $self->_debug("No group in RT named $group->{Name}, but found group by LDAP id $group->{id}. Renaming the group.");
+        # $group->Update will take care of the name
+        return $group_obj;
+    }
+
+    my $attr_name = 'LDAPImport-gid-'. $group->{'id'};
+    my $rt_gid = $group_obj->FirstAttribute( $attr_name );
+    return $group_obj if $rt_gid;
+
+    my $other_group = $self->find_rt_group_by_ldap_id( $group->{'id'} );
+    if ( $other_group ) {
+        $self->_debug("Group with LDAP id $group->{id} exists, as well as group named $group->{Name}. Renaming both.");
+    }
+    elsif ( grep $_->Name =~ /^LDAPImport-gid-/, @{ $group_obj->Attributes->ItemsArrayRef } ) {
+        $self->_debug("No group in RT with LDAP id $group->{id}, but group $group->{Name} has id. Renaming the group and creating a new one.");
+    }
+    else {
+        $self->_debug("No group in RT with LDAP id $group->{id}, but group $group->{Name} exists and has no LDAP id. Assigning the id to the group.");
+        if ( $args{import} ) {
+            my ($status, $msg) = $group_obj->SetAttribute( Name => $attr_name, Content => 1 );
+            unless ( $status ) {
+                $self->_error("Couldn't set attribute: $msg");
+                return undef;
+            }
+            $self->_debug("Assigned $group->{id} LDAP group id to $group->{Name}");
+        }
+        else {
+            print "Group $group->{'Name'} gets LDAP id $group->{id}\n";
+        }
+
+        return $group_obj;
+    }
+
+    # rename existing group to move it out of our way
+    {
+        my ($old, $new) = ($group_obj->Name, $group_obj->Name .' (LDAPImport '. time . ')');
+        if ( $args{import} ) {
+            my ($status, $msg) = $group_obj->SetName( $new );
+            unless ( $status ) {
+                $self->_error("Couldn't rename group from $old to $new: $msg");
+                return undef;
+            }
+            $self->_debug("Renamed group $old to $new");
+        }
+        else {
+            print "Group $old to be renamed to $new\n";
+        }
+    }
+
+    return $other_group || RT::Group->new($RT::SystemUser);
+}
+
+sub find_rt_group_by_ldap_id {
+    my $self = shift;
+    my $id = shift;
+
+    my $groups = RT::Groups->new( RT->SystemUser );
+    $groups->LimitToUserDefinedGroups;
+    my $attr_alias = $groups->Join( FIELD1 => 'id', TABLE2 => 'Attributes', FIELD2 => 'ObjectId' );
+    $groups->Limit( ALIAS => $attr_alias, FIELD => 'ObjectType', VALUE => 'RT::Group' );
+    $groups->Limit( ALIAS => $attr_alias, FIELD => 'Name', VALUE => 'LDAPImport-gid-'. $id );
+    return $groups->First;
+}
+
 
 =head3 add_group_members
 
