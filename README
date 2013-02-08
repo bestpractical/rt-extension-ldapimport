@@ -298,11 +298,6 @@ METHODS
     If $LDAPUpdateOnly is true, we will not create new users but we will
     update existing ones.
 
-  update_rt_user
-    Takes a hash with a user object as "user" and a hashref of updated
-    values as "info". Mimics RT::Record's "Update" method, but without
-    side-effects of newline normalization.
-
   add_user_to_group
     Adds new users to the group specified in the $LDAPGroupName variable
     (defaults to 'Imported from LDAP'). You can avoid this if you set
