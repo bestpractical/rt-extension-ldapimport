@@ -584,29 +584,13 @@ C<RT::User::Create> or C<RT::Group::Create>.
 sub _build_object {
     my $self = shift;
     my %args = @_;
-    my $mapping = $args{mapping};
 
-    my $object = {};
-    foreach my $rtfield ( keys %{$mapping} ) {
-        next if $rtfield =~ $args{skip};
-        my $ldap_attribute = $mapping->{$rtfield};
-
-        my @attributes = $self->_parse_ldap_mapping($ldap_attribute);
-        unless (@attributes) {
-            $self->_error("Invalid LDAP mapping for $rtfield ".Dumper($ldap_attribute));
-            next;
-        }
-        my @values;
-        foreach my $attribute (@attributes) {
-            #$self->_debug("fetching value for $attribute and storing it in $rtfield");
-            # otherwise we'll pull 7 alternate names out of the Name field
-            # this may want to be configurable
-            push @values, scalar $args{ldap_entry}->get_value($attribute);
-        }
-        $object->{$rtfield} = join(' ',grep {defined} @values);
+    my $res = $self->_parse_ldap_mapping( %args );
+    foreach my $value ( values %$res ) {
+        @$value = map { ref $_ eq 'ARRAY'? $_->[0] : $_ } @$value;
+        $value = join ' ', grep defined && length, @$value;
     }
-
-    return $object;
+    return $res;
 }
 
 =head3 _parse_ldap_mapping
@@ -629,18 +613,45 @@ together.
 
 sub _parse_ldap_mapping {
     my $self = shift;
-    my $mapping = shift;
+    my %args = @_;
 
-    if (ref $mapping eq 'ARRAY') {
-        return map { $self->_parse_ldap_mapping($_) } @$mapping;
-    } elsif (ref $mapping eq 'CODE') {
-        return map { $self->_parse_ldap_mapping($_) } $mapping->()
-    } elsif (ref $mapping) {
-        $self->_error("Invalid type of LDAPMapping [$mapping]");
-        return;
-    } else {
-        return $mapping;
+    my $mapping = $args{mapping};
+
+    my %res;
+    foreach my $rtfield ( keys %$mapping ) {
+        next if $args{'skip'} && $rtfield =~ $args{'skip'};
+        next if $args{'only'} && $rtfield !~ $args{'only'};
+
+        my $ldap_field = $mapping->{$rtfield};
+        my @list = grep defined && length, ref $ldap_field eq 'ARRAY'? @$ldap_field : ($ldap_field);
+        unless (@list) {
+            $self->_error("Invalid LDAP mapping for $rtfield, no defined fields");
+            next;
+        }
+
+        my @values;
+        foreach my $e (@list) {
+            if (ref $e eq 'CODE') {
+                push @values, $e->(
+                    %args,
+                    self => $self,
+                    rt_field => $rtfield,
+                    ldap_field => $ldap_field,
+                    result => \%res,
+                );
+            } elsif (ref $e) {
+                $self->_error("Invalid type of LDAP mapping for $rtfield, value is $e");
+                next;
+            } else {
+                # XXX: get_value asref returns undef if there is no such field on
+                # the entry, should we warn?
+                push @values, grep defined, $args{'ldap_entry'}->get_value( $e, asref => 1 );
+            }
+        }
+        $res{ $rtfield } = \@values;
     }
+
+    return \%res;
 }
 
 =head2 create_rt_user
@@ -799,25 +810,18 @@ sub add_custom_field_value {
     my %args = @_;
     my $user = $args{user};
 
-    foreach my $rtfield ( keys %{$RT::LDAPMapping} ) {
+    my $data = $self->_build_object(
+        %args,
+        only => qr/^CF\.(.+)$/i,
+        mapping => $RT::LDAPMapping,
+    );
+
+    foreach my $rtfield ( keys %$data ) {
         next unless $rtfield =~ /^CF\.(.+)$/i;
         my $cf_name = $1;
-        my $ldap_attribute = $RT::LDAPMapping->{$rtfield};
 
-        my @attributes = $self->_parse_ldap_mapping($ldap_attribute);
-        unless (@attributes) {
-            $self->_error("Invalid LDAP mapping for $rtfield ".Dumper($ldap_attribute));
-            next;
-        }
-        my @values;
-        foreach my $attribute (@attributes) {
-            #$self->_debug("fetching value for $attribute and storing it in $rtfield");
-            # otherwise we'll pull 7 alternate names out of the Name field
-            # this may want to be configurable
-            push @values, scalar $args{ldap_entry}->get_value($attribute);
-        }
-        my $cfv_name = join(' ',@values); 
-        next unless $cfv_name;
+        my $cfv_name = $data->{ $rtfield }
+            or next;
 
         my $cf = RT::CustomField->new($RT::SystemUser);
         my ($status, $msg) = $cf->Load($cf_name);
@@ -866,21 +870,18 @@ sub update_object_custom_field_values {
     my %args = @_;
     my $obj  = $args{object};
 
-    foreach my $rtfield ( keys %{$RT::LDAPMapping} ) {
+    my $data = $self->_build_object(
+        %args,
+        only => qr/^UserCF\.(.+)$/i,
+        mapping => $RT::LDAPMapping,
+    );
+
+    foreach my $rtfield ( keys %$data ) {
         # XXX TODO: accept GroupCF when we call this from group_import too
         next unless $rtfield =~ /^UserCF\.(.+)$/i;
         my $cf_name = $1;
-        my $ldap_attribute = $RT::LDAPMapping->{$rtfield};
-
-        my @attributes = $self->_parse_ldap_mapping($ldap_attribute);
-        unless (@attributes) {
-            $self->_error("Invalid LDAP mapping for $rtfield ".Dumper($ldap_attribute));
-            next;
-        }
-        my $value = join ' ',
-                    grep { defined and length }
-                     map { scalar $args{ldap_entry}->get_value($_) }
-                         @attributes;
+        # XXX TODO: value can not be undefined, but empty string
+        my $value = $data->{$rtfield};
 
         my $current = $obj->FirstCustomFieldValue($cf_name);
 
