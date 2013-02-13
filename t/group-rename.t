@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use lib 't/lib';
-use RT::Extension::LDAPImport::Test tests => 66;
+use RT::Extension::LDAPImport::Test tests => undef;
 eval { require Net::LDAP::Server::Test; 1; } or do {
     plan skip_all => 'Unable to test without Net::Server::LDAP::Test';
 };
@@ -113,6 +113,8 @@ ok( $importer->import_users( import => 1 ), 'imported users');
     ok get_group('Test Group 2')->FirstAttribute('LDAPImport-gid-3');
     ok get_group('Test Group 3')->FirstAttribute('LDAPImport-gid-2');
 }
+
+done_testing;
 
 sub is_member_of {
     my $uname = shift;
