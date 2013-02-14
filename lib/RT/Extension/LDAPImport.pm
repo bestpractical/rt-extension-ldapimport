@@ -934,7 +934,18 @@ sub import_groups {
 
     my $done = 0; my $count = scalar @results;
     while (my $entry = shift @results) {
-        my $group = $self->_build_object( ldap_entry => $entry, skip => qr/(?i)^Member_Attr/, mapping => $mapping );
+        my $group = $self->_parse_ldap_mapping(
+            %args,
+            ldap_entry => $entry,
+            skip => qr/^Member_Attr_Value$/i,
+            mapping => $mapping,
+        );
+        foreach my $key ( grep !/^Member_Attr/, keys %$group ) {
+            @{ $group->{$key} } = map { ref $_ eq 'ARRAY'? $_->[0] : $_ } @{ $group->{$key} };
+            $group->{$key} = join ' ', grep defined && length, @{ $group->{$key} };
+        }
+        @{ $group->{'Member_Attr'} } = map { ref $_ eq 'ARRAY'? @$_ : $_  } @{ $group->{'Member_Attr'} }
+            if $group->{'Member_Attr'};
         $group->{Description} ||= 'Imported from LDAP';
         unless ( $group->{Name} ) {
             $self->_warn("No Name for group, skipping ".Dumper $group);
@@ -987,7 +998,14 @@ sub _import_group {
     $self->_debug("Processing group $group->{Name}");
     my ($group_obj, $created) = $self->create_rt_group( %args, group => $group );
     return if $args{import} and not $group_obj;
-    $self->add_group_members( %args, name => $group->{Name}, group => $group_obj, ldap_entry => $ldap_entry, new => $created );
+    $self->add_group_members(
+        %args,
+        name => $group->{Name},
+        info => $group,
+        group => $group_obj,
+        ldap_entry => $ldap_entry,
+        new => $created,
+    );
     # XXX TODO: support OCFVs for groups too
     return;
 }
@@ -1014,6 +1032,8 @@ sub create_rt_group {
 
     my $group_obj = $self->find_rt_group(%args);
     return unless defined $group_obj;
+
+    $group = { map { $_ => $group->{$_} } qw(id Name Description) };
 
     my $id = delete $group->{'id'};
 
@@ -1165,8 +1185,7 @@ sub add_group_members {
 
     $self->_debug("Processing group membership for $groupname");
 
-    my $members = $self->_get_group_members_from_ldap(%args);
-
+    my $members = $args{'info'}{'Member_Attr'};
     unless (defined $members) {
         $self->_warn("No members found for $groupname in Member_Attr");
         return;
@@ -1234,17 +1253,6 @@ sub add_group_members {
         }
     }
 }
-
-sub _get_group_members_from_ldap {
-    my $self = shift;
-    my %args = @_;
-    my $ldap_entry = $args{ldap_entry};
-
-    my $mapping = $RT::LDAPGroupMapping;
-
-    my $members = $ldap_entry->get_value($mapping->{Member_Attr}, asref => 1);
-}
-
 
 =head2 _show_group
 
