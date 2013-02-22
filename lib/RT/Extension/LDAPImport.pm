@@ -89,17 +89,75 @@ The LDAP search filter to apply (in this case, find all the users).
                        WorkPhone    => 'telephoneNumber',
                        Organization => 'departmentName'});
 
-This provides the mapping of attributes in RT to attribute in LDAP.
+This provides the mapping of attributes in RT to attribute(s) in LDAP.
 Only Name is required for RT.
 
-The LDAP attributes can also be an arrayref of LDAP fields
+The values in the mapping (i.e. the LDAP fields, the right hand side)
+can be one of the following:
+
+=over 4
+
+=item an attribute
+
+LDAP attribute to use. Only first value is used if attribute is
+multivalue. For example:
+
+    EmailAddress => 'mail',
+
+=item an array reference
+
+The LDAP attributes can also be an arrayref of LDAP fields,
+for example:
 
     WorkPhone => [qw/CompanyPhone Extension/]
 
-which will be concatenated together with a space.
+which will be concatenated together with a space. First values
+of each attribute are used in case they have multiple values.
 
-The LDAP attribute can also be a subroutine reference
-that returns either an arrayref or a list of attributes.
+=item a subroutine reference
+
+The LDAP attribute can also be a subroutine reference that does
+mapping, for example:
+
+    YYY => sub {
+        my %args = @_;
+        my @values = grep defined && length, $args{ldap_entry}->get_value('XXX');
+        return @values;
+    },
+
+The subroutine should return value or list of values. The following
+arguments are passed into the function in a hash:
+
+=over 4
+
+=item self
+
+Instance of this class.
+
+=item ldap_entry
+
+L<Net::LDAP::Entry> instance that is currently mapped.
+
+=item import
+
+Boolean value indicating whether it's import or a dry run. If it's
+dry run (import is false) then function shouldn't change anything.
+
+=item mapping
+
+Hash reference with the currently processed mapping, eg. C<$LDAPMapping>.
+
+=item rt_field and ldap_field
+
+The currently processed key and value from the mapping.
+
+=item result
+
+Hash reference with results of completed mappings for this ldap entry.
+
+=back
+
+=back
 
 The keys in the mapping (i.e. the RT fields, the left hand side) may be a user
 custom field name prefixed with C<UserCF.>, for example C<< 'UserCF.Employee
@@ -161,12 +219,16 @@ The search filter to apply.
 
 A mapping of RT attributes to LDAP attributes to identify group members.
 Name will become the name of the group in RT, in this case pulling
-from the cn attribute on the LDAP group record returned.
+from the cn attribute on the LDAP group record returned. Everything
+besides C<Member_Attr_Value> is processed according to rules described
+in documentation for C<$LDAPMapping> option, so value can be array
+or code reference besides scalar.
 
 C<Member_Attr> is the field in the LDAP group record the importer should
 look at for group members. These values (there may be multiple members)
 will then be compared to the RT user name, which came from the LDAP
-user record.
+user record. See F<t/group-callbacks.t> for a complex example of
+using a code reference as value of this option.
 
 C<Member_Attr_Value>, which defaults to 'dn', specifies where on the LDAP
 user record the importer should look to compare the member value.
@@ -575,9 +637,22 @@ sub _build_user_object {
 
 =head2 _build_object
 
-Builds up data from LDAP for importing
-Returns a hash of user or group data ready for
-C<RT::User::Create> or C<RT::Group::Create>.
+Internal method - a wrapper around L</_parse_ldap_mapping>
+that flattens results turning every value into a scalar.
+
+The following:
+
+    [
+        [$first_value1, ... ],
+        [$first_value2],
+        $scalar_value,
+    ]
+
+Turns into:
+
+    "$first_value1 $first_value2 $scalar_value"
+
+Arguments are just passed into L</_parse_ldap_mapping>.
 
 =cut
 
@@ -595,19 +670,55 @@ sub _build_object {
 
 =head3 _parse_ldap_mapping
 
-Internal helper function for C<import_user>.
-If we're passed an arrayref, it will recurse
-over each of the elements in case one of them is
-another arrayref or subroutine.
+Internal helper method that maps an LDAP entry to a hash
+according to passed arguments. Takes named arguments:
 
-If we're passed a subref, it executes the code
-and recurses over each of the returned values
-so that a returned array or arrayref will work.
+=over 4
 
-If we're passed a scalar, returns that.
+=item ldap_entry
 
-Returns a list of values that need to be concatenated
-together.
+L<Net::LDAP::Entry> instance that should be mapped.
+
+=item only
+
+Optional regular expression. If passed then only matching
+entries in the mapping will be processed.
+
+=item only
+
+Optional regular expression. If passed then matching
+entries in the mapping will be skipped.
+
+=item mapping
+
+Hash that defines how to map. Key defines position
+in the result. Value can be one of the following:
+
+If we're passed a scalar or an array reference then
+value is:
+
+    [
+        [value1_of_attr1, value2_of_attr1],
+        [value1_of_attr2, value2_of_attr2],
+    ]
+
+If we're passed a subroutine reference as value or
+as an element of array, it executes the code
+and returned list is pushed into results array:
+
+    [
+        @result_of_function,
+    ]
+
+All arguments are passed into the subroutine as well
+as a few more. See more in description of C<$LDAPMapping>
+option.
+
+=back
+
+Returns hash reference with results, each value is
+an array with elements either scalars or arrays as
+described above.
 
 =cut
 
