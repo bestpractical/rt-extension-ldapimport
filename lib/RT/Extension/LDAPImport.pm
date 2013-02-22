@@ -154,6 +154,8 @@ The currently processed key and value from the mapping.
 =item result
 
 Hash reference with results of completed mappings for this ldap entry.
+This should be used to inject that are not in the mapping, not to inspect.
+Mapping is processed in literal order of the keys.
 
 =back
 
@@ -729,7 +731,7 @@ sub _parse_ldap_mapping {
     my $mapping = $args{mapping};
 
     my %res;
-    foreach my $rtfield ( keys %$mapping ) {
+    foreach my $rtfield ( sort keys %$mapping ) {
         next if $args{'skip'} && $rtfield =~ $args{'skip'};
         next if $args{'only'} && $rtfield !~ $args{'only'};
 
