@@ -1,5 +1,10 @@
 Revision history for RT-Extension-LDAPImport
 
+0.35
+    Implement better way to use functions in mappings. Old way was mostly
+    useless. It's not expected that somebody used them. See description of
+    C<$LDAPMapping> option for details.
+
 0.34
     Bug fix: Revert changes in 0.33_01 and _02; RT::Authen::ExternalAuth 0.13
              is using RT::Record->Update now

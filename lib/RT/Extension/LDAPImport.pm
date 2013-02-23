@@ -89,17 +89,77 @@ The LDAP search filter to apply (in this case, find all the users).
                        WorkPhone    => 'telephoneNumber',
                        Organization => 'departmentName'});
 
-This provides the mapping of attributes in RT to attribute in LDAP.
+This provides the mapping of attributes in RT to attribute(s) in LDAP.
 Only Name is required for RT.
 
-The LDAP attributes can also be an arrayref of LDAP fields
+The values in the mapping (i.e. the LDAP fields, the right hand side)
+can be one of the following:
+
+=over 4
+
+=item an attribute
+
+LDAP attribute to use. Only first value is used if attribute is
+multivalue. For example:
+
+    EmailAddress => 'mail',
+
+=item an array reference
+
+The LDAP attributes can also be an arrayref of LDAP fields,
+for example:
 
     WorkPhone => [qw/CompanyPhone Extension/]
 
-which will be concatenated together with a space.
+which will be concatenated together with a space. First values
+of each attribute are used in case they have multiple values.
 
-The LDAP attribute can also be a subroutine reference
-that returns either an arrayref or a list of attributes.
+=item a subroutine reference
+
+The LDAP attribute can also be a subroutine reference that does
+mapping, for example:
+
+    YYY => sub {
+        my %args = @_;
+        my @values = grep defined && length, $args{ldap_entry}->get_value('XXX');
+        return @values;
+    },
+
+The subroutine should return value or list of values. The following
+arguments are passed into the function in a hash:
+
+=over 4
+
+=item self
+
+Instance of this class.
+
+=item ldap_entry
+
+L<Net::LDAP::Entry> instance that is currently mapped.
+
+=item import
+
+Boolean value indicating whether it's import or a dry run. If it's
+dry run (import is false) then function shouldn't change anything.
+
+=item mapping
+
+Hash reference with the currently processed mapping, eg. C<$LDAPMapping>.
+
+=item rt_field and ldap_field
+
+The currently processed key and value from the mapping.
+
+=item result
+
+Hash reference with results of completed mappings for this ldap entry.
+This should be used to inject that are not in the mapping, not to inspect.
+Mapping is processed in literal order of the keys.
+
+=back
+
+=back
 
 The keys in the mapping (i.e. the RT fields, the left hand side) may be a user
 custom field name prefixed with C<UserCF.>, for example C<< 'UserCF.Employee
@@ -161,12 +221,16 @@ The search filter to apply.
 
 A mapping of RT attributes to LDAP attributes to identify group members.
 Name will become the name of the group in RT, in this case pulling
-from the cn attribute on the LDAP group record returned.
+from the cn attribute on the LDAP group record returned. Everything
+besides C<Member_Attr_Value> is processed according to rules described
+in documentation for C<$LDAPMapping> option, so value can be array
+or code reference besides scalar.
 
 C<Member_Attr> is the field in the LDAP group record the importer should
 look at for group members. These values (there may be multiple members)
 will then be compared to the RT user name, which came from the LDAP
-user record.
+user record. See F<t/group-callbacks.t> for a complex example of
+using a code reference as value of this option.
 
 C<Member_Attr_Value>, which defaults to 'dn', specifies where on the LDAP
 user record the importer should look to compare the member value.
@@ -575,72 +639,132 @@ sub _build_user_object {
 
 =head2 _build_object
 
-Builds up data from LDAP for importing
-Returns a hash of user or group data ready for
-C<RT::User::Create> or C<RT::Group::Create>.
+Internal method - a wrapper around L</_parse_ldap_mapping>
+that flattens results turning every value into a scalar.
+
+The following:
+
+    [
+        [$first_value1, ... ],
+        [$first_value2],
+        $scalar_value,
+    ]
+
+Turns into:
+
+    "$first_value1 $first_value2 $scalar_value"
+
+Arguments are just passed into L</_parse_ldap_mapping>.
 
 =cut
 
 sub _build_object {
     my $self = shift;
     my %args = @_;
-    my $mapping = $args{mapping};
 
-    my $object = {};
-    foreach my $rtfield ( keys %{$mapping} ) {
-        next if $rtfield =~ $args{skip};
-        my $ldap_attribute = $mapping->{$rtfield};
-
-        my @attributes = $self->_parse_ldap_mapping($ldap_attribute);
-        unless (@attributes) {
-            $self->_error("Invalid LDAP mapping for $rtfield ".Dumper($ldap_attribute));
-            next;
-        }
-        my @values;
-        foreach my $attribute (@attributes) {
-            #$self->_debug("fetching value for $attribute and storing it in $rtfield");
-            # otherwise we'll pull 7 alternate names out of the Name field
-            # this may want to be configurable
-            push @values, scalar $args{ldap_entry}->get_value($attribute);
-        }
-        $object->{$rtfield} = join(' ',grep {defined} @values);
+    my $res = $self->_parse_ldap_mapping( %args );
+    foreach my $value ( values %$res ) {
+        @$value = map { ref $_ eq 'ARRAY'? $_->[0] : $_ } @$value;
+        $value = join ' ', grep defined && length, @$value;
     }
-
-    return $object;
+    return $res;
 }
 
 =head3 _parse_ldap_mapping
 
-Internal helper function for C<import_user>.
-If we're passed an arrayref, it will recurse
-over each of the elements in case one of them is
-another arrayref or subroutine.
+Internal helper method that maps an LDAP entry to a hash
+according to passed arguments. Takes named arguments:
 
-If we're passed a subref, it executes the code
-and recurses over each of the returned values
-so that a returned array or arrayref will work.
+=over 4
 
-If we're passed a scalar, returns that.
+=item ldap_entry
 
-Returns a list of values that need to be concatenated
-together.
+L<Net::LDAP::Entry> instance that should be mapped.
+
+=item only
+
+Optional regular expression. If passed then only matching
+entries in the mapping will be processed.
+
+=item only
+
+Optional regular expression. If passed then matching
+entries in the mapping will be skipped.
+
+=item mapping
+
+Hash that defines how to map. Key defines position
+in the result. Value can be one of the following:
+
+If we're passed a scalar or an array reference then
+value is:
+
+    [
+        [value1_of_attr1, value2_of_attr1],
+        [value1_of_attr2, value2_of_attr2],
+    ]
+
+If we're passed a subroutine reference as value or
+as an element of array, it executes the code
+and returned list is pushed into results array:
+
+    [
+        @result_of_function,
+    ]
+
+All arguments are passed into the subroutine as well
+as a few more. See more in description of C<$LDAPMapping>
+option.
+
+=back
+
+Returns hash reference with results, each value is
+an array with elements either scalars or arrays as
+described above.
 
 =cut
 
 sub _parse_ldap_mapping {
     my $self = shift;
-    my $mapping = shift;
+    my %args = @_;
 
-    if (ref $mapping eq 'ARRAY') {
-        return map { $self->_parse_ldap_mapping($_) } @$mapping;
-    } elsif (ref $mapping eq 'CODE') {
-        return map { $self->_parse_ldap_mapping($_) } $mapping->()
-    } elsif (ref $mapping) {
-        $self->_error("Invalid type of LDAPMapping [$mapping]");
-        return;
-    } else {
-        return $mapping;
+    my $mapping = $args{mapping};
+
+    my %res;
+    foreach my $rtfield ( sort keys %$mapping ) {
+        next if $args{'skip'} && $rtfield =~ $args{'skip'};
+        next if $args{'only'} && $rtfield !~ $args{'only'};
+
+        my $ldap_field = $mapping->{$rtfield};
+        my @list = grep defined && length, ref $ldap_field eq 'ARRAY'? @$ldap_field : ($ldap_field);
+        unless (@list) {
+            $self->_error("Invalid LDAP mapping for $rtfield, no defined fields");
+            next;
+        }
+
+        my @values;
+        foreach my $e (@list) {
+            if (ref $e eq 'CODE') {
+                push @values, $e->(
+                    %args,
+                    self => $self,
+                    rt_field => $rtfield,
+                    ldap_field => $ldap_field,
+                    result => \%res,
+                );
+            } elsif (ref $e) {
+                $self->_error("Invalid type of LDAP mapping for $rtfield, value is $e");
+                next;
+            } else {
+                # XXX: get_value asref returns undef if there is no such field on
+                # the entry, should we warn?
+                push @values, grep defined, $args{'ldap_entry'}->get_value( $e, asref => 1 );
+            }
+        }
+        $res{ $rtfield } = \@values;
     }
+
+    return \%res;
 }
 
 =head2 create_rt_user
@@ -799,25 +923,18 @@ sub add_custom_field_value {
     my %args = @_;
     my $user = $args{user};
 
-    foreach my $rtfield ( keys %{$RT::LDAPMapping} ) {
+    my $data = $self->_build_object(
+        %args,
+        only => qr/^CF\.(.+)$/i,
+        mapping => $RT::LDAPMapping,
+    );
+
+    foreach my $rtfield ( keys %$data ) {
         next unless $rtfield =~ /^CF\.(.+)$/i;
         my $cf_name = $1;
-        my $ldap_attribute = $RT::LDAPMapping->{$rtfield};
 
-        my @attributes = $self->_parse_ldap_mapping($ldap_attribute);
-        unless (@attributes) {
-            $self->_error("Invalid LDAP mapping for $rtfield ".Dumper($ldap_attribute));
-            next;
-        }
-        my @values;
-        foreach my $attribute (@attributes) {
-            #$self->_debug("fetching value for $attribute and storing it in $rtfield");
-            # otherwise we'll pull 7 alternate names out of the Name field
-            # this may want to be configurable
-            push @values, scalar $args{ldap_entry}->get_value($attribute);
-        }
-        my $cfv_name = join(' ',@values); 
-        next unless $cfv_name;
+        my $cfv_name = $data->{ $rtfield }
+            or next;
 
         my $cf = RT::CustomField->new($RT::SystemUser);
         my ($status, $msg) = $cf->Load($cf_name);
@@ -866,21 +983,18 @@ sub update_object_custom_field_values {
     my %args = @_;
     my $obj  = $args{object};
 
-    foreach my $rtfield ( keys %{$RT::LDAPMapping} ) {
+    my $data = $self->_build_object(
+        %args,
+        only => qr/^UserCF\.(.+)$/i,
+        mapping => $RT::LDAPMapping,
+    );
+
+    foreach my $rtfield ( keys %$data ) {
         # XXX TODO: accept GroupCF when we call this from group_import too
         next unless $rtfield =~ /^UserCF\.(.+)$/i;
         my $cf_name = $1;
-        my $ldap_attribute = $RT::LDAPMapping->{$rtfield};
-
-        my @attributes = $self->_parse_ldap_mapping($ldap_attribute);
-        unless (@attributes) {
-            $self->_error("Invalid LDAP mapping for $rtfield ".Dumper($ldap_attribute));
-            next;
-        }
-        my $value = join ' ',
-                    grep { defined and length }
-                     map { scalar $args{ldap_entry}->get_value($_) }
-                         @attributes;
+        # XXX TODO: value can not be undefined, but empty string
+        my $value = $data->{$rtfield};
 
         my $current = $obj->FirstCustomFieldValue($cf_name);
 
@@ -933,7 +1047,18 @@ sub import_groups {
 
     my $done = 0; my $count = scalar @results;
     while (my $entry = shift @results) {
-        my $group = $self->_build_object( ldap_entry => $entry, skip => qr/(?i)^Member_Attr/, mapping => $mapping );
+        my $group = $self->_parse_ldap_mapping(
+            %args,
+            ldap_entry => $entry,
+            skip => qr/^Member_Attr_Value$/i,
+            mapping => $mapping,
+        );
+        foreach my $key ( grep !/^Member_Attr/, keys %$group ) {
+            @{ $group->{$key} } = map { ref $_ eq 'ARRAY'? $_->[0] : $_ } @{ $group->{$key} };
+            $group->{$key} = join ' ', grep defined && length, @{ $group->{$key} };
+        }
+        @{ $group->{'Member_Attr'} } = map { ref $_ eq 'ARRAY'? @$_ : $_  } @{ $group->{'Member_Attr'} }
+            if $group->{'Member_Attr'};
         $group->{Description} ||= 'Imported from LDAP';
         unless ( $group->{Name} ) {
             $self->_warn("No Name for group, skipping ".Dumper $group);
@@ -986,7 +1111,14 @@ sub _import_group {
     $self->_debug("Processing group $group->{Name}");
     my ($group_obj, $created) = $self->create_rt_group( %args, group => $group );
     return if $args{import} and not $group_obj;
-    $self->add_group_members( %args, name => $group->{Name}, group => $group_obj, ldap_entry => $ldap_entry, new => $created );
+    $self->add_group_members(
+        %args,
+        name => $group->{Name},
+        info => $group,
+        group => $group_obj,
+        ldap_entry => $ldap_entry,
+        new => $created,
+    );
     # XXX TODO: support OCFVs for groups too
     return;
 }
@@ -1013,6 +1145,8 @@ sub create_rt_group {
 
     my $group_obj = $self->find_rt_group(%args);
     return unless defined $group_obj;
+
+    $group = { map { $_ => $group->{$_} } qw(id Name Description) };
 
     my $id = delete $group->{'id'};
 
@@ -1164,8 +1298,7 @@ sub add_group_members {
 
     $self->_debug("Processing group membership for $groupname");
 
-    my $members = $self->_get_group_members_from_ldap(%args);
-
+    my $members = $args{'info'}{'Member_Attr'};
     unless (defined $members) {
         $self->_warn("No members found for $groupname in Member_Attr");
         return;
@@ -1233,17 +1366,6 @@ sub add_group_members {
         }
     }
 }
-
-sub _get_group_members_from_ldap {
-    my $self = shift;
-    my %args = @_;
-    my $ldap_entry = $args{ldap_entry};
-
-    my $mapping = $RT::LDAPGroupMapping;
-
-    my $members = $ldap_entry->get_value($mapping->{Member_Attr}, asref => 1);
-}
-
 
 =head2 _show_group
 
