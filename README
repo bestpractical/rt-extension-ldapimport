@@ -116,7 +116,9 @@ CONFIGURATION
 
             result
                 Hash reference with results of completed mappings for this
-                ldap entry.
+                ldap entry. This should be used to inject that are not in
+                the mapping, not to inspect. Mapping is processed in literal
+                order of the keys.
 
         The keys in the mapping (i.e. the RT fields, the left hand side) may
         be a user custom field name prefixed with "UserCF.", for example
@@ -305,7 +307,8 @@ METHODS
     setting $LDAPCreatePrivileged to 1.
 
   _import_user
-    The user has run us with --import, so bring data in.
+    We have found a user to attempt to import; returns the RT::User object
+    if it was found (or created), "undef" if not.
 
   _cache_user ldap_entry => Net::LDAP::Entry, [user => { ... }]
     Adds the user to a global cache which is used when importing groups
