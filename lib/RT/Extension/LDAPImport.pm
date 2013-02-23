@@ -517,7 +517,8 @@ sub import_users {
 
 =head2 _import_user
 
-The user has run us with --import, so bring data in.
+We have found a user to attempt to import; returns the L<RT::User>
+object if it was found (or created), C<undef> if not.
 
 =cut
 
