@@ -500,14 +500,6 @@ sub import_users {
     my $done = 0; my $count = scalar @results;
     while (my $entry = shift @results) {
         my $user = $self->_build_user_object( ldap_entry => $entry );
-        unless ( $user->{Name} ) {
-            $self->_warn("No Name or Emailaddress for user, skipping ".Dumper $user);
-            next;
-        }
-        if ( $user->{Name} =~ /^[0-9]+$/) {
-            $self->_debug("Skipping user '$user->{Name}', as it is numeric");
-            next;
-        }
         $self->_import_user( user => $user, ldap_entry => $entry, import => $args{import} );
         $done++;
         $self->_debug("Imported $done/$count users");
@@ -525,6 +517,15 @@ object if it was found (or created), C<undef> if not.
 sub _import_user {
     my $self = shift;
     my %args = @_;
+
+    unless ( $args{user}{Name} ) {
+        $self->_warn("No Name or Emailaddress for user, skipping ".Dumper($args{user}));
+        return;
+    }
+    if ( $args{user}{Name} =~ /^[0-9]+$/) {
+        $self->_debug("Skipping user '$args{user}{Name}', as it is numeric");
+        return;
+    }
 
     $self->_debug("Processing user $args{user}{Name}");
     $self->_cache_user( %args );
