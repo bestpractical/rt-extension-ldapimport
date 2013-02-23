@@ -535,7 +535,7 @@ sub _import_user {
     $self->add_custom_field_value( %args );
     $self->update_object_custom_field_values( %args, object => $args{user} );
 
-    return 1;
+    return $args{user};
 }
 
 =head2 _cache_user ldap_entry => Net::LDAP::Entry, [user => { ... }]
