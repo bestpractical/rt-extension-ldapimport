@@ -18,7 +18,7 @@ name: RT-Extension-LDAPImport
 no_index:
   directory:
     - inc
-    - t
+    - xt
 recommends:
   Net::LDAP::Server::Test: 0
 requires:

@@ -52,6 +52,38 @@ Running the import:
     /opt/rt4/local/plugins/RT-Extension-LDAPImport/bin/rtldapimport \
     --import
 
+=head1 INSTALLATION
+
+=over
+
+=item C<perl Makefile.PL>
+
+=item C<make>
+
+=item C<make install>
+
+May need root permissions
+
+=item Edit your F</opt/rt4/etc/RT_SiteConfig.pm>
+
+If you are using RT 4.2 or greater, add this line:
+
+    Plugin('RT::Extension::LDAPImport');
+
+For earlier releases of RT 4, add this line:
+
+    Set(@Plugins, qw(RT::Extension::LDAPImport));
+
+or add C<RT::Extension::LDAPImport> to your existing C<@Plugins> line.
+
+=item Clear your mason cache
+
+    rm -rf /opt/rt4/var/mason_data/obj
+
+=item Restart your webserver
+
+=back
+
 =head1 CONFIGURATION
 
 All of the configuration for the importer goes
@@ -308,6 +340,15 @@ It may work with RT 3.6.
 
 The L<ldapsearch|http://www.openldap.org/software/man.cgi?query=ldapsearch&manpath=OpenLDAP+2.0-Release>
 utility in openldap can be very helpful while refining your filters.
+
+=head1 Developing
+
+If you want to run tests for this extension, you should create the
+F<inc/.author> directory and will need to set RT_DBA_USER and
+RT_DBA_PASSWORD environment variables to a database user that can
+create/drop tests databases as needed.
+
+Do not run tests in a production environment.
 
 =head1 METHODS
 

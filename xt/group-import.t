@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use lib 't/lib';
+use lib 'xt/lib';
 use RT::Extension::LDAPImport::Test tests => 66;
 eval { require Net::LDAP::Server::Test; 1; } or do {
     plan skip_all => 'Unable to test without Net::Server::LDAP::Test';

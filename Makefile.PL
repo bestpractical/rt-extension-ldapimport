@@ -45,8 +45,10 @@ substitute(
     {
         sufix => '.in'
     },
-    q(t/lib/RT/Extension/LDAPImport/Test.pm),
+    q(xt/lib/RT/Extension/LDAPImport/Test.pm),
 );
+
+author_tests('xt');
 
 sign;
 &auto_install();

@@ -14,6 +14,6 @@ META.yml
 *.swp
 rtldapimport
 *.bak
-t/tmp/
-t/lib/RT/Extension/LDAPImport/Test.pm
+xt/tmp/
+xt/lib/RT/Extension/LDAPImport/Test.pm
 MYMETA.*

@@ -253,6 +253,14 @@ LDAP Filters
     DAP+2.0-Release> utility in openldap can be very helpful while refining
     your filters.
 
+Developing
+    If you want to run tests for this extension, you should create the
+    inc/.author directory and will need to set RT_DBA_USER and
+    RT_DBA_PASSWORD environment variables to a database user that can
+    create/drop tests databases as needed.
+
+    Do not run tests in a production environment.
+
 METHODS
   connect_ldap
     Relies on the config variables $RT::LDAPHost, $RT::LDAPUser and
