@@ -5,6 +5,13 @@ Revision history for RT-Extension-LDAPImport
     useless. It's not expected that somebody used them. See description of
     C<$LDAPMapping> option for details.
 
+    Adds id to $LDAPGroupMapping to allow the importer to keep up with group
+    renames in LDAP.
+
+    Change tests to be author-only because they tended to cause confusion and
+    attempt to create/drop a database.  This is not something you want happening
+    on your production machine when using a cpan client to install.
+
 0.34
     Bug fix: Revert changes in 0.33_01 and _02; RT::Authen::ExternalAuth 0.13
              is using RT::Record->Update now
