@@ -1513,12 +1513,9 @@ sub _warn {
 
 =head1 BUGS AND LIMITATIONS
 
-No bugs have been reported.
-
 Please report any bugs or feature requests to
 C<bug-rt-extension-ldapimport@rt.cpan.org>, or through the web interface at
 L<http://rt.cpan.org>.
-
 
 =head1 AUTHOR
 
@@ -1527,7 +1524,7 @@ Kevin Falcone  C<< <falcone@bestpractical.com> >>
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright (c) 2007-2012, Best Practical Solutions, LLC.  All rights reserved.
+Copyright (c) 2007-2013, Best Practical Solutions, LLC.  All rights reserved.
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See L<perlartistic>.

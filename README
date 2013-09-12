@@ -35,6 +35,28 @@ SYNOPSIS
         /opt/rt4/local/plugins/RT-Extension-LDAPImport/bin/rtldapimport \
         --import
 
+INSTALLATION
+    "perl Makefile.PL"
+    "make"
+    "make install"
+        May need root permissions
+
+    Edit your /opt/rt4/etc/RT_SiteConfig.pm
+        If you are using RT 4.2 or greater, add this line:
+
+            Plugin('RT::Extension::LDAPImport');
+
+        For earlier releases of RT 4, add this line:
+
+            Set(@Plugins, qw(RT::Extension::LDAPImport));
+
+        or add "RT::Extension::LDAPImport" to your existing @Plugins line.
+
+    Clear your mason cache
+            rm -rf /opt/rt4/var/mason_data/obj
+
+    Restart your webserver
+
 CONFIGURATION
     All of the configuration for the importer goes your "RT_SiteConfig.pm"
     file. Some of these values pass through to Net::LDAP so you can check
@@ -481,8 +503,6 @@ Utility Functions
     messages to the screen.
 
 BUGS AND LIMITATIONS
-    No bugs have been reported.
-
     Please report any bugs or feature requests to
     "bug-rt-extension-ldapimport@rt.cpan.org", or through the web interface
     at <http://rt.cpan.org>.
@@ -491,7 +511,7 @@ AUTHOR
     Kevin Falcone "<falcone@bestpractical.com>"
 
 LICENCE AND COPYRIGHT
-    Copyright (c) 2007-2012, Best Practical Solutions, LLC. All rights
+    Copyright (c) 2007-2013, Best Practical Solutions, LLC. All rights
     reserved.
 
     This module is free software; you can redistribute it and/or modify it
