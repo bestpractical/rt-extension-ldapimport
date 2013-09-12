@@ -1240,6 +1240,13 @@ sub create_rt_group {
 
 }
 
+=head3 find_rt_group
+
+Loads groups by Name and by the specified LDAP id. Attempts to resolve
+renames and other out-of-sync failures between RT and LDAP.
+
+=cut
+
 sub find_rt_group {
     my $self = shift;
     my %args = @_;
@@ -1308,6 +1315,13 @@ sub find_rt_group {
 
     return $other_group || RT::Group->new($RT::SystemUser);
 }
+
+=head3 find_rt_group_by_ldap_id
+
+Loads an RT::Group by the ldap provided id (different from RT's internal group
+id)
+
+=cut
 
 sub find_rt_group_by_ldap_id {
     my $self = shift;
