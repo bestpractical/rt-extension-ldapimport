@@ -437,6 +437,7 @@ sub _run_search {
     my %search = (
         base    => $args{base},
         filter  => $args{filter},
+        scope   => ($args{scope} || 'sub'),
     );
     my (@results, $page, $cookie);
 
