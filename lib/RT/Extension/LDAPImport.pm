@@ -526,9 +526,19 @@ sub import_users {
     my $self = shift;
     my %args = @_;
 
+    $self->_users({});
+
     my @results = $self->run_user_search;
-    unless ( @results ) {
-        $self->_debug("No results found, no import");
+    return $self->_import_users( %args, users => \@results );
+}
+
+sub _import_users {
+    my $self = shift;
+    my %args = @_;
+    my $users = $args{users};
+
+    unless ( @$users ) {
+        $self->_debug("No users found, no import");
         $self->disconnect_ldap;
         return;
     }
@@ -536,10 +546,8 @@ sub import_users {
     my $mapping = $RT::LDAPMapping;
     return unless $self->_check_ldap_mapping( mapping => $mapping );
 
-    $self->_users({});
-
-    my $done = 0; my $count = scalar @results;
-    while (my $entry = shift @results) {
+    my $done = 0; my $count = scalar @$users;
+    while (my $entry = shift @$users) {
         my $user = $self->_build_user_object( ldap_entry => $entry );
         $self->_import_user( user => $user, ldap_entry => $entry, import => $args{import} );
         $done++;
