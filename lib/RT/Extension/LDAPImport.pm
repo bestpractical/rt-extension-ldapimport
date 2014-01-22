@@ -1544,6 +1544,7 @@ sub disconnect_ldap {
 
     $ldap->unbind;
     $ldap->disconnect;
+    $self->_ldap(undef);
     return;
 }
 
