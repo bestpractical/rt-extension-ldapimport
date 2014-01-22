@@ -280,6 +280,22 @@ up with two groups in RT.
 You can provide a C<Description> key which will be added as the group
 description in RT. The default description is 'Imported from LDAP'.
 
+=item C<< Set($LDAPImportGroupMembers, 1); >>
+
+When disabled, the default, LDAP group import expects that all LDAP members
+already exist as RT users.  Often the user import stage, which happens before
+groups, is used to create and/or update group members by using an
+C<$LDAPFilter> which includes a C<memberOf> attribute.
+
+When enabled, by setting to C<1>, LDAP group members are explicitly imported
+before membership is synced with RT.  This enables groups-only configurations
+to also import group members without specifying a potentially long and complex
+C<$LDAPFilter> using C<memberOf>.  It's particularly handy when C<memberOf>
+isn't available on user entries.
+
+Note that C<$LDAPFilter> still applies when this option is enabled, so some
+group members may be filtered out from the import.
+
 =item C<< Set($LDAPSizeLimit, 1000); >>
 
 You can set this value if your LDAP server has result size limits.
@@ -1368,6 +1384,37 @@ sub add_group_members {
     unless (defined $members) {
         $self->_warn("No members found for $groupname in Member_Attr");
         return;
+    }
+
+    if ($RT::LDAPImportGroupMembers) {
+        $self->_debug("Importing members of group $groupname");
+        my @entries;
+        my $attr = lc($RT::LDAPGroupMapping->{Member_Attr_Value} || 'dn');
+
+        # Lookup each DN's full entry, or...
+        if ($attr eq 'dn') {
+            @entries = grep defined, map {
+                my @results = $self->_run_search(
+                    scope   => 'base',
+                    base    => $_,
+                    filter  => $RT::LDAPFilter,
+                );
+                $results[0]
+            } @$members;
+        }
+        # ...or find all the entries in a single search by attribute.
+        else {
+            # I wonder if this will run into filter length limits? -trs, 22 Jan 2014
+            my $members = join "", map { "($attr=" . escape_filter_value($_) . ")" } @$members;
+            @entries = $self->_run_search(
+                base   => $RT::LDAPBase,
+                filter => "(&$RT::LDAPFilter(|$members))",
+            );
+        }
+        $self->_import_users(
+            import  => $args{import},
+            users   => \@entries,
+        ) or $self->_debug("Importing group members failed");
     }
 
     my %rt_group_members;
