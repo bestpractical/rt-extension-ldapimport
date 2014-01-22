@@ -1388,11 +1388,13 @@ sub add_group_members {
         } else {
             my $attr    = lc($RT::LDAPGroupMapping->{Member_Attr_Value} || 'dn');
             my $base    = $attr eq 'dn' ? $member : $RT::LDAPBase;
+            my $scope   = $attr eq 'dn' ? 'base'  : 'sub';
             my $filter  = $attr eq 'dn'
                             ? $RT::LDAPFilter
                             : "(&$RT::LDAPFilter($attr=" . escape_filter_value($member) . "))";
             my @results = $self->_run_search(
                 base   => $base,
+                scope  => $scope,
                 filter => $filter,
             );
             unless ( @results ) {
