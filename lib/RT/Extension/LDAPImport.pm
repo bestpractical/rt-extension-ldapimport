@@ -1032,7 +1032,7 @@ sub update_object_custom_field_values {
         mapping => $RT::LDAPMapping,
     );
 
-    foreach my $rtfield ( keys %$data ) {
+    foreach my $rtfield ( sort keys %$data ) {
         # XXX TODO: accept GroupCF when we call this from group_import too
         next unless $rtfield =~ /^UserCF\.(.+)$/i;
         my $cf_name = $1;
