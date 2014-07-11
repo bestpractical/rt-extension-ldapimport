@@ -1043,15 +1043,16 @@ sub update_object_custom_field_values {
         $current = '' unless defined $current;
 
         if (not length $current and not length $value) {
-            $self->_debug($obj->Name . ": Skipping '$cf_name'.  No value in RT and LDAP.");
+            $self->_debug("\tCF.$cf_name\tskipping, no value in RT and LDAP");
             next;
         }
         elsif ($current eq $value) {
-            $self->_debug($obj->Name . ": Value '$value' is already set for '$cf_name'");
+            $self->_debug("\tCF.$cf_name\tunchanged => $value");
             next;
         }
 
-        $self->_debug($obj->Name . ": Adding object value '$value' for '$cf_name'");
+        $current = 'unset' unless length $current;
+        $self->_debug("\tCF.$cf_name\t$current => $value");
         next unless $args{import};
 
         my ($ok, $msg) = $obj->AddCustomFieldValue( Field => $cf_name, Value => $value );
