@@ -1036,16 +1036,17 @@ sub update_object_custom_field_values {
         # XXX TODO: accept GroupCF when we call this from group_import too
         next unless $rtfield =~ /^UserCF\.(.+)$/i;
         my $cf_name = $1;
-        # XXX TODO: value can not be undefined, but empty string
         my $value = $data->{$rtfield};
+        $value = '' unless defined $value;
 
         my $current = $obj->FirstCustomFieldValue($cf_name);
+        $current = '' unless defined $current;
 
-        if (not defined $current and not defined $value) {
-            $self->_debug($obj->Name . ": Skipping '$cf_name'.  No value in RT or LDAP.");
+        if (not length $current and not length $value) {
+            $self->_debug($obj->Name . ": Skipping '$cf_name'.  No value in RT and LDAP.");
             next;
         }
-        elsif (defined $current and defined $value and $current eq $value) {
+        elsif ($current eq $value) {
             $self->_debug($obj->Name . ": Value '$value' is already set for '$cf_name'");
             next;
         }
