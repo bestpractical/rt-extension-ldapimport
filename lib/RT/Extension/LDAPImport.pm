@@ -1364,6 +1364,10 @@ sub add_group_members {
     my %rt_group_members;
     if ($args{group} and not $args{new}) {
         my $user_members = $group->UserMembersObj( Recursively => 0);
+
+        # find members who are Disabled too so we don't try to add them below
+        $user_members->FindAllRows;
+
         while ( my $member = $user_members->Next ) {
             $rt_group_members{$member->Name} = $member;
         }
