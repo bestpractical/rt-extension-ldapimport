@@ -1,6 +1,6 @@
 package RT::Extension::LDAPImport;
 
-our $VERSION = '0.35';
+our $VERSION = '0.36';
 
 use warnings;
 use strict;
@@ -70,7 +70,7 @@ If you are using RT 4.2 or greater, add this line:
 
     Plugin('RT::Extension::LDAPImport');
 
-For earlier releases of RT 4, add this line:
+For RT 4.0, add this line:
 
     Set(@Plugins, qw(RT::Extension::LDAPImport));
 
@@ -348,9 +348,7 @@ create a lot of users or groups in your RT instance.
 
 =head1 RT Versions
 
-The importer works with RT 3.8 and newer including RT 4.
-
-It may work with RT 3.6.
+The importer works with RT 4.0 and above.
 
 =head1 LDAP Filters
 
@@ -1590,47 +1588,27 @@ sub _warn {
     print STDERR $msg, "\n";
 }
 
-=head1 BUGS AND LIMITATIONS
-
-Please report any bugs or feature requests to
-C<bug-rt-extension-ldapimport@rt.cpan.org>, or through the web interface at
-L<http://rt.cpan.org>.
-
 =head1 AUTHOR
 
-Kevin Falcone  C<< <falcone@bestpractical.com> >>
+Best Practical Solutions, LLC E<lt>modules@bestpractical.comE<gt>
 
+=head1 BUGS
 
-=head1 LICENCE AND COPYRIGHT
+All bugs should be reported via email to
 
-Copyright (c) 2007-2013, Best Practical Solutions, LLC.  All rights reserved.
+    L<bug-RT-Extension-LDAPImport@rt.cpan.org|mailto:bug-RT-Extension-LDAPImport@rt.cpan.org>
 
-This module is free software; you can redistribute it and/or
-modify it under the same terms as Perl itself. See L<perlartistic>.
+or via the web at
 
+    L<rt.cpan.org|http://rt.cpan.org/Public/Dist/Display.html?Name=RT-Extension-LDAPImport>.
 
-=head1 DISCLAIMER OF WARRANTY
+=head1 LICENSE AND COPYRIGHT
 
-BECAUSE THIS SOFTWARE IS LICENSED FREE OF CHARGE, THERE IS NO WARRANTY
-FOR THE SOFTWARE, TO THE EXTENT PERMITTED BY APPLICABLE LAW. EXCEPT WHEN
-OTHERWISE STATED IN WRITING THE COPYRIGHT HOLDERS AND/OR OTHER PARTIES
-PROVIDE THE SOFTWARE "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER
-EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE
-ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE SOFTWARE IS WITH
-YOU. SHOULD THE SOFTWARE PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL
-NECESSARY SERVICING, REPAIR, OR CORRECTION.
+This software is Copyright (c) 2007-2014 by Best Practical Solutions, LLC
 
-IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING
-WILL ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MAY MODIFY AND/OR
-REDISTRIBUTE THE SOFTWARE AS PERMITTED BY THE ABOVE LICENCE, BE
-LIABLE TO YOU FOR DAMAGES, INCLUDING ANY GENERAL, SPECIAL, INCIDENTAL,
-OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE
-THE SOFTWARE (INCLUDING BUT NOT LIMITED TO LOSS OF DATA OR DATA BEING
-RENDERED INACCURATE OR LOSSES SUSTAINED BY YOU OR THIRD PARTIES OR A
-FAILURE OF THE SOFTWARE TO OPERATE WITH ANY OTHER SOFTWARE), EVEN IF
-SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF
-SUCH DAMAGES.
+This is free software, licensed under:
+
+  The GNU General Public License, Version 2, June 1991
 
 =cut
 

@@ -1,17 +1,13 @@
 use inc::Module::Install;
 
 RTx('RT-Extension-LDAPImport');
-author ('Kevin Falcone <falcone@bestpractical.com>');
 license('perl');
-abstract('Import RT Users from an LDAP store');
-all_from('lib/RT/Extension/LDAPImport.pm');
-readme_from('lib/RT/Extension/LDAPImport.pm');
 
 requires('Test::More');
 requires('Net::LDAP');
-requires_rt('3.6.3');
 requires('Class::Accessor');
 
+author_tests('xt');
 feature "Proper Testing" =>
     -default => 0,
     recommends('Net::LDAP::Server::Test')
@@ -47,8 +43,6 @@ substitute(
     },
     q(xt/lib/RT/Extension/LDAPImport/Test.pm),
 );
-
-author_tests('xt');
 
 sign;
 &auto_install();

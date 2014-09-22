@@ -12,9 +12,12 @@ inc/Module/Install/Makefile.pm
 inc/Module/Install/Metadata.pm
 inc/Module/Install/ReadmeFromPod.pm
 inc/Module/Install/RTx.pm
+inc/Module/Install/RTx/Runtime.pm
 inc/Module/Install/Substitute.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
+inc/unicore/Name.pm
+inc/YAML/Tiny.pm
 INSTALL
 INSTALL.SKIP
 lib/RT/Extension/LDAPImport.pm
@@ -26,6 +29,7 @@ README
 xt/00.load.t
 xt/group-callbacks.t
 xt/group-import.t
+xt/group-member-import.t
 xt/group-rename.t
 xt/lib/RT/Extension/LDAPImport/Test.pm.in
 xt/pod-coverage.t
