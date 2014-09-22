@@ -34,7 +34,7 @@ In C<RT_SiteConfig.pm>:
     # Add to any existing plugins
     Set(@Plugins, qw(RT::Extension::LDAPImport));
     
-    # If you want to sync Groups RT <-> LDAP
+    # If you want to sync Groups from LDAP into RT
     
     Set($LDAPGroupBase, 'ou=Groups,o=Our Place');
     Set($LDAPGroupFilter, '(&(cn = Groups))');
