@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use lib 'xt/lib';
-use RT::Extension::LDAPImport::Test tests => 66;
+use RT::Extension::LDAPImport::Test tests => 91;
 eval { require Net::LDAP::Server::Test; 1; } or do {
     plan skip_all => 'Unable to test without Net::Server::LDAP::Test';
 };
@@ -98,6 +98,17 @@ RT->Config->Set('LDAPGroupMapping',
                     Member_Attr         => 'memberUid',
                     Member_Attr_Value   => 'uid',
                    });
+import_group_members_ok( memberUid => 'uid' );
+
+{
+    my $uid  = $ldap_user_entries[2]->{uid}; # the first user used for memberUid
+    my $user = RT::User->new($RT::SystemUser);
+    my ($ok, $msg) = $user->Load($uid);
+    ok $ok, "Loaded user #$uid" or diag $msg;
+
+    ($ok, $msg) = $user->SetDisabled(1);
+    ok $ok, "Disabled user #$uid" or diag $msg;
+}
 import_group_members_ok( memberUid => 'uid' );
 
 sub import_group_members_ok {
