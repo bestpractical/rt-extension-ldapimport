@@ -280,6 +280,22 @@ up with two groups in RT.
 You can provide a C<Description> key which will be added as the group
 description in RT. The default description is 'Imported from LDAP'.
 
+=item C<< Set($LDAPImportGroupMembers, 1); >>
+
+When disabled, the default, LDAP group import expects that all LDAP members
+already exist as RT users.  Often the user import stage, which happens before
+groups, is used to create and/or update group members by using an
+C<$LDAPFilter> which includes a C<memberOf> attribute.
+
+When enabled, by setting to C<1>, LDAP group members are explicitly imported
+before membership is synced with RT.  This enables groups-only configurations
+to also import group members without specifying a potentially long and complex
+C<$LDAPFilter> using C<memberOf>.  It's particularly handy when C<memberOf>
+isn't available on user entries.
+
+Note that C<$LDAPFilter> still applies when this option is enabled, so some
+group members may be filtered out from the import.
+
 =item C<< Set($LDAPSizeLimit, 1000); >>
 
 You can set this value if your LDAP server has result size limits.
@@ -437,6 +453,7 @@ sub _run_search {
     my %search = (
         base    => $args{base},
         filter  => $args{filter},
+        scope   => ($args{scope} || 'sub'),
     );
     my (@results, $page, $cookie);
 
@@ -526,9 +543,19 @@ sub import_users {
     my $self = shift;
     my %args = @_;
 
+    $self->_users({});
+
     my @results = $self->run_user_search;
-    unless ( @results ) {
-        $self->_debug("No results found, no import");
+    return $self->_import_users( %args, users => \@results );
+}
+
+sub _import_users {
+    my $self = shift;
+    my %args = @_;
+    my $users = $args{users};
+
+    unless ( @$users ) {
+        $self->_debug("No users found, no import");
         $self->disconnect_ldap;
         return;
     }
@@ -536,10 +563,8 @@ sub import_users {
     my $mapping = $RT::LDAPMapping;
     return unless $self->_check_ldap_mapping( mapping => $mapping );
 
-    $self->_users({});
-
-    my $done = 0; my $count = scalar @results;
-    while (my $entry = shift @results) {
+    my $done = 0; my $count = scalar @$users;
+    while (my $entry = shift @$users) {
         my $user = $self->_build_user_object( ldap_entry => $entry );
         $self->_import_user( user => $user, ldap_entry => $entry, import => $args{import} );
         $done++;
@@ -1361,6 +1386,37 @@ sub add_group_members {
         return;
     }
 
+    if ($RT::LDAPImportGroupMembers) {
+        $self->_debug("Importing members of group $groupname");
+        my @entries;
+        my $attr = lc($RT::LDAPGroupMapping->{Member_Attr_Value} || 'dn');
+
+        # Lookup each DN's full entry, or...
+        if ($attr eq 'dn') {
+            @entries = grep defined, map {
+                my @results = $self->_run_search(
+                    scope   => 'base',
+                    base    => $_,
+                    filter  => $RT::LDAPFilter,
+                );
+                $results[0]
+            } @$members;
+        }
+        # ...or find all the entries in a single search by attribute.
+        else {
+            # I wonder if this will run into filter length limits? -trs, 22 Jan 2014
+            my $members = join "", map { "($attr=" . escape_filter_value($_) . ")" } @$members;
+            @entries = $self->_run_search(
+                base   => $RT::LDAPBase,
+                filter => "(&$RT::LDAPFilter(|$members))",
+            );
+        }
+        $self->_import_users(
+            import  => $args{import},
+            users   => \@entries,
+        ) or $self->_debug("Importing group members failed");
+    }
+
     my %rt_group_members;
     if ($args{group} and not $args{new}) {
         my $user_members = $group->UserMembersObj( Recursively => 0);
@@ -1379,11 +1435,13 @@ sub add_group_members {
         } else {
             my $attr    = lc($RT::LDAPGroupMapping->{Member_Attr_Value} || 'dn');
             my $base    = $attr eq 'dn' ? $member : $RT::LDAPBase;
+            my $scope   = $attr eq 'dn' ? 'base'  : 'sub';
             my $filter  = $attr eq 'dn'
                             ? $RT::LDAPFilter
                             : "(&$RT::LDAPFilter($attr=" . escape_filter_value($member) . "))";
             my @results = $self->_run_search(
                 base   => $base,
+                scope  => $scope,
                 filter => $filter,
             );
             unless ( @results ) {
@@ -1486,6 +1544,7 @@ sub disconnect_ldap {
 
     $ldap->unbind;
     $ldap->disconnect;
+    $self->_ldap(undef);
     return;
 }
 
