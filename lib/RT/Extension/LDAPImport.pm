@@ -21,7 +21,7 @@ RT::Extension::LDAPImport - Import Users from an LDAP store
 
 In C<RT_SiteConfig.pm>:
 
-    Set($LDAPHost,'my.ldap.host')
+    Set($LDAPHost,'my.ldap.host');
     Set($LDAPUser,'me');
     Set($LDAPPassword,'mypass');
     Set($LDAPFilter, '(&(cn = users))');
