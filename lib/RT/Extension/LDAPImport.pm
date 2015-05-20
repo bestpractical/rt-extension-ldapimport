@@ -420,11 +420,13 @@ Set up the appropriate arguments for a listing of users.
 
 sub run_user_search {
     my $self = shift;
+    my %args = @_;
+
     $self->_run_search(
         base   => $RT::LDAPBase,
-        filter => $RT::LDAPFilter
+        filter => $RT::LDAPFilter,
+        %args,
     );
-
 }
 
 =head2 _run_search
@@ -543,7 +545,7 @@ sub import_users {
 
     $self->_users({});
 
-    my @results = $self->run_user_search;
+    my @results = $self->run_user_search( %args );
     return $self->_import_users( %args, users => \@results );
 }
 
