@@ -1379,7 +1379,7 @@ sub add_group_members {
     my $group = $args{group};
     my $groupname = $args{name};
     my $ldap_entry = $args{ldap_entry};
-    my $ldap_base = $RT::LDAPBase;
+    my $ldap_base = $args{base} || $RT::LDAPBase;
 
     $self->_debug("Processing group membership for $groupname");
 
