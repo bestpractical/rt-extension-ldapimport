@@ -1379,6 +1379,7 @@ sub add_group_members {
     my $group = $args{group};
     my $groupname = $args{name};
     my $ldap_entry = $args{ldap_entry};
+    my $ldap_base = $RT::LDAPBase;
 
     $self->_debug("Processing group membership for $groupname");
 
@@ -1409,7 +1410,7 @@ sub add_group_members {
             # I wonder if this will run into filter length limits? -trs, 22 Jan 2014
             my $members = join "", map { "($attr=" . escape_filter_value($_) . ")" } @$members;
             @entries = $self->_run_search(
-                base   => $RT::LDAPBase,
+                base   => $ldap_base,
                 filter => "(&$RT::LDAPFilter(|$members))",
             );
         }
@@ -1440,7 +1441,7 @@ sub add_group_members {
             next unless $username = $users->{lc $member};
         } else {
             my $attr    = lc($RT::LDAPGroupMapping->{Member_Attr_Value} || 'dn');
-            my $base    = $attr eq 'dn' ? $member : $RT::LDAPBase;
+            my $base    = $attr eq 'dn' ? $member : $ldap_base;
             my $scope   = $attr eq 'dn' ? 'base'  : 'sub';
             my $filter  = $attr eq 'dn'
                             ? $RT::LDAPFilter
