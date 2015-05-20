@@ -36,6 +36,7 @@ GetOptions(
     \%OPT,
     'debug', 'help',
     'import', 'users!', 'groups!',
+    'base=s',
 );
 if ($OPT{help}) {
    print <<USAGE;
@@ -43,11 +44,15 @@ $0: [--debug] [--import] [--help]
      --help           This usage statement.
      --debug          Enable debugging.
      --import         Do the import.
+     --base BASE      Use BASE in place of configured \$LDAPBase.
      --no-users       Skip users.
      --no-groups      Skip groups.
 USAGE
    exit 0;
 }
+
+my %args;
+$args{base} = $OPT{base} if $OPT{base};
 
 my $importer = RT::Extension::LDAPImport->new;
 $importer->screendebug(1) if $OPT{debug};
@@ -55,11 +60,11 @@ $importer->screendebug(1) if $OPT{debug};
 if ($OPT{import}) {
     if ($OPT{users}) {
         print "Starting import\n";
-        $importer->import_users(import => 1);
+        $importer->import_users(%args, import => 1);
     }
     if ($OPT{groups}) {
         print "Starting group import\n";
-        $importer->import_groups(import => 1);
+        $importer->import_groups(%args, import => 1);
     }
     print "Finished import\n";
 } else {
@@ -71,12 +76,12 @@ TESTING
 
     if ($OPT{users}) {
         print "Testing import\n";
-        $importer->import_users();
+        $importer->import_users(%args);
     }
 
     if ($OPT{groups}) {
         print "Testing group import\n";
-        $importer->import_groups();
+        $importer->import_groups(%args);
     }
 
     print "Finished test\n";
