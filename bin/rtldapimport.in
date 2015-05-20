@@ -68,10 +68,16 @@ Running test import, no data will be changed
 Rerun command with --import to perform the import
 Rerun command with --debug for more information
 TESTING
-    $importer->import_users if $OPT{users};
+
+    if ($OPT{users}) {
+        print "Testing import\n";
+        $importer->import_users();
+    }
+
     if ($OPT{groups}) {
         print "Testing group import\n";
         $importer->import_groups();
     }
+
     print "Finished test\n";
 }
